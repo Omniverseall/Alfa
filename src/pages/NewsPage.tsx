@@ -2,23 +2,27 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Calendar, ArrowRight } from "lucide-react";
-import { adminService } from "@/services/adminService";
+import { adminService, NewsItem } from "@/services/adminService";
 
 const NewsPage = () => {
-  const [news, setNews] = useState([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("Все категории");
 
   useEffect(() => {
-    setNews(adminService.getNews());
+    const load = async () => {
+      const data = await adminService.getNews();
+      setNews(data);
+    };
+    load();
+    const unsubscribe = adminService.subscribeNews(setNews);
+    return () => unsubscribe();
   }, []);
 
-  // Filter news by category
   const filteredNews = news.filter(
     (item) => selectedCategory === "Все категории" || item.category === selectedCategory
   );
 
-  // Get unique categories
-  const categories = ["Все категории", ...new Set(news.map(item => item.category))];
+  const categories = ["Все категории", ...Array.from(new Set(news.map(item => item.category)))];
 
   return (
     <div className="py-12 md:py-16">

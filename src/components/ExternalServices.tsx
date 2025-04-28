@@ -1,7 +1,7 @@
 
 import React from "react";
 import TawkToChat from "./TawkToChat";
-import CallButton from "./CallButton";
+
 
 interface ExternalServicesProps {
   tawkToPropertyId: string;
@@ -12,7 +12,6 @@ const ExternalServices = ({ tawkToPropertyId, tawkToWidgetId }: ExternalServices
   return (
     <>
       <TawkToChat propertyId={tawkToPropertyId} widgetId={tawkToWidgetId} />
-      <CallButton />
     </>
   );
 };

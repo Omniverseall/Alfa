@@ -3,24 +3,44 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { adminService } from "@/services/adminService";
 
+interface Service {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+}
+
 const PriceListPage = () => {
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
-    setServices(adminService.getServices());
+    const fetchServices = async () => {
+      try {
+        const fetchedServices = await adminService.getServices();
+        setServices(fetchedServices);
+      } catch (error) {
+        console.error("Ошибка загрузки услуг:", error);
+      }
+    };
+
+    fetchServices();
+
+    const unsubscribe = adminService.subscribeServices(fetchServices);
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  // Filter services based on search query and category
   const filteredServices = services.filter((service) => {
     const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = !selectedCategory || service.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  // Get unique categories
-  const categories = ["Все услуги", ...new Set(services.map(service => service.category))];
+  const categories = ["Все услуги", ...new Set(services.map((service) => service.category))];
 
   return (
     <div className="py-12 md:py-16">
@@ -33,7 +53,6 @@ const PriceListPage = () => {
         </div>
 
         <div className="grid md:grid-cols-4 gap-8">
-          {/* Sidebar with categories */}
           <div className="md:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-semibold mb-4">Категории</h2>
@@ -55,7 +74,6 @@ const PriceListPage = () => {
             </div>
           </div>
 
-          {/* Price list */}
           <div className="md:col-span-3">
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="mb-6 relative">
@@ -95,6 +113,7 @@ const PriceListPage = () => {
                   </tbody>
                 </table>
               </div>
+
             </div>
           </div>
         </div>

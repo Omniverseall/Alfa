@@ -1,6 +1,5 @@
-
 import { Link } from "react-router-dom";
-import { Phone, Mail, MapPin, Clock, Facebook, Instagram, MessageSquare } from "lucide-react";
+import { Instagram, Phone, Mail, MapPin, Clock } from "lucide-react"; // Добавлены недостающие иконки
 
 const Footer = () => {
   return (
@@ -23,14 +22,13 @@ const Footer = () => {
               Современная клиника с высококвалифицированными специалистами и передовым медицинским оборудованием.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-300 hover:text-white transition-colors">
-                <Facebook size={20} />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-white transition-colors">
+              <a
+                href="https://www.instagram.com/karasualfadiagnostic?igsh=aWtremEzcXI4ejM2"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
                 <Instagram size={20} />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-white transition-colors">
-                <MessageSquare size={20} />
               </a>
             </div>
           </div>
@@ -56,7 +54,7 @@ const Footer = () => {
                 <MapPin className="h-5 w-5 mr-2 mt-0.5 text-brand-red" />
                 <div>
                   <p className="font-medium">Адрес:</p>
-                  <p className="text-gray-300">г. Ташкент, Яккасарайский район, ул. Бобура, 25</p>
+                  <p className="text-gray-300">г. Ташкент, Мирзо-Улугбекский р-он, Карасу 4, дом 2</p>
                 </div>
               </li>
               <li className="flex items-start">
@@ -90,6 +88,7 @@ const Footer = () => {
               <li><Link to="/doctors" className="text-gray-300 hover:text-white">Наши врачи</Link></li>
               <li><Link to="/news" className="text-gray-300 hover:text-white">Новости</Link></li>
               <li><Link to="/appointment" className="text-gray-300 hover:text-white">Запись на приём</Link></li>
+              <li><Link to="/admin/login" className="text-gray-400 hover:text-white text-sm">Вход для администратора</Link></li> {/* Added admin login link */}
               {/* Удалили "Обратная связь" */}
             </ul>
           </div>

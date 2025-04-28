@@ -4,16 +4,38 @@ import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { adminService } from "@/services/adminService";
 
+interface Doctor {
+  id: number;
+  name: string;
+  specialization: string;
+  image: string;
+  experience: string;
+}
+
 const DoctorsPage = () => {
-  const [doctors, setDoctors] = useState([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]); // Изначально пустой массив
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSpecialization, setSelectedSpecialization] = useState("Все специализации");
 
   useEffect(() => {
-    setDoctors(adminService.getDoctors());
+    const fetchDoctors = async () => {
+      try {
+        const fetchedDoctors = await adminService.getDoctors();
+        setDoctors(fetchedDoctors);
+      } catch (error) {
+        console.error("Ошибка загрузки врачей:", error);
+      }
+    };
+
+    fetchDoctors();
+
+    const unsubscribe = adminService.subscribeDoctors(fetchDoctors);
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  // Filter doctors based on search query and selected specialization
   const filteredDoctors = doctors.filter((doctor) => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSpecialization =
@@ -47,14 +69,14 @@ const DoctorsPage = () => {
         {filteredDoctors.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredDoctors.map((doctor) => (
-              <div 
-                key={doctor.id} 
+              <div
+                key={doctor.id}
                 className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300"
               >
                 <div className="h-64 overflow-hidden">
-                  <img 
-                    src={doctor.image} 
-                    alt={doctor.name} 
+                  <img
+                    src={doctor.image}
+                    alt={doctor.name}
                     className="w-full h-full object-cover"
                   />
                 </div>

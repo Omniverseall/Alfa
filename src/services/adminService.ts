@@ -1,105 +1,140 @@
-// Mock database for admin functionality
-let doctors = [
-  {
-    id: 1,
-    name: "Иванов Иван Иванович",
-    specialization: "Кардиолог",
-    experience: "15 лет опыта",
-    education: "Ташкентская медицинская академия",
-    description: "Специалист высшей категории по диагностике и лечению сердечно-сосудистых заболеваний.",
-    image: "/placeholder.svg",
-  },
-  {
-    id: 2,
-    name: "Петрова Мария Сергеевна",
-    specialization: "Терапевт",
-    experience: "10 лет опыта",
-    education: "Самаркандский государственный медицинский институт",
-    description: "Опытный терапевт с обширной практикой.",
-    image: "/placeholder.svg",
-  }
-];
+import { supabase } from "@/services/supabaseClient";
+import { format } from "date-fns";
 
-let news = [
-  {
-    id: 1,
-    title: "Новое оборудование в нашей клинике",
-    date: "15.04.2025",
-    category: "Оборудование",
-    content: "Мы рады сообщить о поступлении нового диагностического оборудования.",
-    image: "/placeholder.svg",
-  },
-  {
-    id: 2,
-    title: "Акция на комплексное обследование",
-    date: "10.04.2025",
-    category: "Акции",
-    content: "До конца месяца действует скидка 20% на комплексную диагностику организма.",
-    image: "/placeholder.svg",
-  }
-];
+// --- Типы ---
+export interface Doctor {
+  id: number;
+  name: string;
+  specialization: string;
+  experience: string;
+  education: string;
+  description: string;
+  image: string;
+}
 
-let services = [
-  {
-    id: 1,
-    name: "Консультация терапевта",
-    price: 100000,
-    category: "Консультации специалистов",
-  },
-  {
-    id: 2,
-    name: "ЭКГ",
-    price: 80000,
-    category: "Диагностика",
-  }
-];
+export interface NewsItem {
+  id: number;
+  title: string;
+  date: string;
+  category: string;
+  content: string;
+  image: string;
+}
 
+export interface Service {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+}
+
+// --- Listeners ---
+type Listener<T = any> = (items: T[]) => void;
+
+let doctorListeners: Listener<Doctor>[] = [];
+let newsListeners: Listener<NewsItem>[] = [];
+let serviceListeners: Listener<Service>[] = [];
+
+const notifyListeners = <T>(listeners: Listener<T>[], items: T[]) => {
+  listeners.forEach(listener => listener(items));
+};
+
+// --- adminService ---
 export const adminService = {
   // Doctors
-  getDoctors: () => doctors,
-  addDoctor: (doctor) => {
-    const newDoctor = { ...doctor, id: Date.now() };
-    doctors = [...doctors, newDoctor];
-    return newDoctor;
+  getDoctors: async () => {
+    const { data, error } = await supabase.from("doctors").select("*");
+    if (error) {
+      console.error("Ошибка загрузки докторов:", error);
+      return [];
+    }
+    return data as Doctor[];
   },
-  updateDoctor: (id, doctor) => {
-    doctors = doctors.map(d => d.id === id ? { ...d, ...doctor } : d);
-    return doctor;
+  subscribeDoctors: (listener: Listener<Doctor>) => {
+    doctorListeners.push(listener);
+    return () => {
+      doctorListeners = doctorListeners.filter(l => l !== listener);
+    };
   },
-  deleteDoctor: (id) => {
-    doctors = doctors.filter(d => d.id !== id);
-    return true;
+  addDoctor: async (doctor: Doctor) => {
+    const newDoctor = { ...doctor, id: Date.now(), image: doctor.image || "/placeholder.svg" };
+    await supabase.from("doctors").insert([newDoctor]);
+    const updated = await adminService.getDoctors();
+    notifyListeners(doctorListeners, updated);
+  },
+  updateDoctor: async (id: number, doctor: Partial<Doctor>) => {
+    await supabase.from("doctors").update(doctor).eq("id", id);
+    const updated = await adminService.getDoctors();
+    notifyListeners(doctorListeners, updated);
+  },
+  deleteDoctor: async (id: number) => {
+    await supabase.from("doctors").delete().eq("id", id);
+    const updated = await adminService.getDoctors();
+    notifyListeners(doctorListeners, updated);
   },
 
   // News
-  getNews: () => news,
-  addNews: (newsItem) => {
-    const newNews = { ...newsItem, id: Date.now() };
-    news = [...news, newNews];
-    return newNews;
+  getNews: async () => {
+    const { data, error } = await supabase.from("news").select("*");
+    if (error) {
+      console.error("Ошибка загрузки новостей:", error);
+      return [];
+    }
+    return data as NewsItem[];
   },
-  updateNews: (id, newsItem) => {
-    news = news.map(n => n.id === id ? { ...n, ...newsItem } : n);
-    return newsItem;
+  subscribeNews: (listener: Listener<NewsItem>) => {
+    newsListeners.push(listener);
+    return () => {
+      newsListeners = newsListeners.filter(l => l !== listener);
+    };
   },
-  deleteNews: (id) => {
-    news = news.filter(n => n.id !== id);
-    return true;
+  addNews: async (newsItem: NewsItem) => {
+    const dateString = format(new Date(), "dd.MM.yyyy");
+    const newNews = { ...newsItem, id: Date.now(), date: dateString, image: newsItem.image || "/placeholder.svg" };
+    await supabase.from("news").insert([newNews]);
+    const updated = await adminService.getNews();
+    notifyListeners(newsListeners, updated);
+  },
+  updateNews: async (id: number, newsItem: Partial<NewsItem>) => {
+    await supabase.from("news").update(newsItem).eq("id", id);
+    const updated = await adminService.getNews();
+    notifyListeners(newsListeners, updated);
+  },
+  deleteNews: async (id: number) => {
+    await supabase.from("news").delete().eq("id", id);
+    const updated = await adminService.getNews();
+    notifyListeners(newsListeners, updated);
   },
 
   // Services
-  getServices: () => services,
-  addService: (service) => {
+  getServices: async () => {
+    const { data, error } = await supabase.from("services").select("*");
+    if (error) {
+      console.error("Ошибка загрузки услуг:", error);
+      return [];
+    }
+    return data as Service[];
+  },
+  subscribeServices: (listener: Listener<Service>) => {
+    serviceListeners.push(listener);
+    return () => {
+      serviceListeners = serviceListeners.filter(l => l !== listener);
+    };
+  },
+  addService: async (service: Service) => {
     const newService = { ...service, id: Date.now() };
-    services = [...services, newService];
-    return newService;
+    await supabase.from("services").insert([newService]);
+    const updated = await adminService.getServices();
+    notifyListeners(serviceListeners, updated);
   },
-  updateService: (id, service) => {
-    services = services.map(s => s.id === id ? { ...s, ...service } : s);
-    return service;
+  updateService: async (id: number, service: Partial<Service>) => {
+    await supabase.from("services").update(service).eq("id", id);
+    const updated = await adminService.getServices();
+    notifyListeners(serviceListeners, updated);
   },
-  deleteService: (id) => {
-    services = services.filter(s => s.id !== id);
-    return true;
-  }
+  deleteService: async (id: number) => {
+    await supabase.from("services").delete().eq("id", id);
+    const updated = await adminService.getServices();
+    notifyListeners(serviceListeners, updated);
+  },
 };
