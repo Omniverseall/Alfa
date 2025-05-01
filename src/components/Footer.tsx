@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Instagram, Phone, Mail, MapPin, Clock } from "lucide-react"; // Добавлены недостающие иконки
+import { Instagram, Phone, Mail, MapPin, Clock } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -88,8 +88,6 @@ const Footer = () => {
               <li><Link to="/doctors" className="text-gray-300 hover:text-white">Наши врачи</Link></li>
               <li><Link to="/news" className="text-gray-300 hover:text-white">Новости</Link></li>
               <li><Link to="/appointment" className="text-gray-300 hover:text-white">Запись на приём</Link></li>
-              <li><Link to="/admin/login" className="text-gray-400 hover:text-white text-sm">Вход для администратора</Link></li> {/* Added admin login link */}
-              {/* Удалили "Обратная связь" */}
             </ul>
           </div>
         </div>

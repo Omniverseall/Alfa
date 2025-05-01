@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Phone, Clock, Stethoscope, HeartPulse, FlaskConical, ChevronRight, ArrowRight } from "lucide-react";
@@ -7,14 +7,13 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
 
 const HomePage = () => {
-  const [doctors, setDoctors] = useState<any[]>([]);
-  const [news, setNews] = useState<any[]>([]);
-  const [services, setServices] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [doctors, setDoctors] = React.useState<any[]>([]);
+  const [news, setNews] = React.useState<any[]>([]);
+  const [services, setServices] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
       try {
         const [doctorsData, newsData, servicesData] = await Promise.all([
           adminService.getDoctors(),
@@ -26,8 +25,6 @@ const HomePage = () => {
         setServices(servicesData);
       } catch (error) {
         console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -52,10 +49,6 @@ const HomePage = () => {
     };
   }, []);
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
   return (
     <div>
       {/* Hero Section */}
@@ -66,15 +59,15 @@ const HomePage = () => {
         </div>
         <div className="container mx-auto px-4 z-10">
           <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Современная клиника Alfa Diagnostic в Ташкенте</h1>
-            <p className="text-xl text-white/90 mb-8">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Современная клиника Alfa Diagnostic в Ташкенте</h1>
+            <p className="text-lg sm:text-xl text-white/90 mb-8">
               Комплексная диагностика и лечение с использованием современного оборудования и опыта квалифицированных специалистов
             </p>
             <div className="flex flex-wrap gap-4">
-              <Button asChild size="lg" className="bg-brand-red hover:bg-red-700 text-white">
+              <Button asChild size="lg" className="bg-brand-red hover:bg-red-700 text-white w-full sm:w-auto">
                 <Link to="/appointment">Записаться на приём</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="bg-white/10 backdrop-blur-sm text-white border-white hover:bg-white/20">
+              <Button asChild variant="outline" size="lg" className="bg-white/10 backdrop-blur-sm text-white border-white hover:bg-white/20 w-full sm:w-auto">
                 <Link to="/prices">Прайс-лист</Link>
               </Button>
             </div>
@@ -83,7 +76,7 @@ const HomePage = () => {
       </section>
 
       {/* About Section */}
-      <section className="py-16 md:py-24 bg-gray-50">
+      <section className="py-12 sm:py-16 md:py-24 bg-gray-50">
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-8 items-center">
           <div className="rounded-lg overflow-hidden shadow-xl">
             <img
@@ -103,7 +96,7 @@ const HomePage = () => {
               <li className="flex items-start"><ChevronRight className="h-5 w-5 text-brand-red mr-2 mt-0.5" /> Комфортные условия</li>
               <li className="flex items-start"><ChevronRight className="h-5 w-5 text-brand-red mr-2 mt-0.5" /> Точные результаты анализов</li>
             </ul>
-            <Button asChild className="bg-brand-blue hover:bg-blue-700">
+            <Button asChild className="bg-brand-blue hover:bg-blue-700 w-full sm:w-auto">
               <Link to="/feedback">Узнать больше</Link>
             </Button>
           </div>
@@ -111,20 +104,20 @@ const HomePage = () => {
       </section>
 
       {/* Doctors Section */}
-      <section className="py-16 md:py-24 bg-gray-50">
+      <section className="py-12 sm:py-16 md:py-24 bg-gray-50">
         <div className="container mx-auto px-4 text-center">
           <h2 className="section-title mb-4">Наши врачи</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
             В нашей клинике работают высококвалифицированные специалисты с многолетним опытом.
           </p>
           {doctors.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {doctors.slice(0, 4).map((doctor) => (
                 <div key={doctor.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
-                  <div className="h-64 overflow-hidden">
+                  <div className="h-48 sm:h-64 overflow-hidden">
                     <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
                   </div>
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <h3 className="font-semibold text-lg">{doctor.name}</h3>
                     <p className="text-brand-blue">{doctor.specialization}</p>
                     <p className="text-gray-500 text-sm">{doctor.experience}</p>
@@ -139,7 +132,7 @@ const HomePage = () => {
             <EmptyState message="Врачи пока не добавлены" />
           )}
           <div className="mt-12">
-            <Button asChild size="lg" className="bg-brand-blue hover:bg-blue-700">
+            <Button asChild size="lg" className="bg-brand-blue hover:bg-blue-700 w-full sm:w-auto">
               <Link to="/doctors">Все врачи</Link>
             </Button>
           </div>
@@ -147,14 +140,14 @@ const HomePage = () => {
       </section>
 
       {/* Services Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-12 sm:py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
           <h2 className="section-title mb-4">Наши услуги</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
             Мы предлагаем широкий спектр медицинских услуг.
           </p>
           {services.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {services.slice(0, 6).map((service) => (
                 <div key={service.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300">
                   <h3 className="text-xl font-semibold mb-2">{service.name}</h3>
@@ -167,7 +160,7 @@ const HomePage = () => {
             <EmptyState message="Услуги пока не добавлены" />
           )}
           <div className="mt-12">
-            <Button asChild size="lg" className="bg-brand-red hover:bg-red-700 text-white">
+            <Button asChild size="lg" className="bg-brand-red hover:bg-red-700 text-white w-full sm:w-auto">
               <Link to="/prices">Показать все цены</Link>
             </Button>
           </div>
@@ -175,20 +168,20 @@ const HomePage = () => {
       </section>
 
       {/* News Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-12 sm:py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
           <h2 className="section-title mb-4">Новости и акции</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
             Следите за нашими акциями и новостями.
           </p>
           {news.length > 0 ? (
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6">
               {news.slice(0, 3).map((item) => (
                 <div key={item.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
                   <div className="h-48 overflow-hidden">
                     <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
                   </div>
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <div className="text-sm text-gray-500">{item.date}</div>
                     <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
                     <p className="text-gray-600 text-sm line-clamp-3">{item.content}</p>
@@ -203,7 +196,7 @@ const HomePage = () => {
             <EmptyState message="Новости пока не добавлены" />
           )}
           <div className="mt-12">
-            <Button asChild size="lg" variant="outline" className="border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white">
+            <Button asChild size="lg" variant="outline" className="border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white w-full sm:w-auto">
               <Link to="/news">Все новости</Link>
             </Button>
           </div>

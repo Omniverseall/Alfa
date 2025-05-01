@@ -26,23 +26,25 @@ export interface Service {
   price: number;
 }
 
-// Cache for storing data
-const cache = {
-  doctors: [] as Doctor[],
-  news: [] as NewsItem[],
-  services: [] as Service[],
-  lastFetch: {
-    doctors: 0,
-    news: 0,
-    services: 0
+// Cache implementation
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const getFromCache = (key: string) => {
+  const item = cache.get(key);
+  if (!item) return null;
+  
+  const isExpired = Date.now() - item.timestamp > CACHE_DURATION;
+  if (isExpired) {
+    cache.delete(key);
+    return null;
   }
+  
+  return item.data;
 };
 
-// Cache duration in milliseconds (5 minutes)
-const CACHE_DURATION = 5 * 60 * 1000;
-
-const isCacheValid = (type: 'doctors' | 'news' | 'services') => {
-  return Date.now() - cache.lastFetch[type] < CACHE_DURATION;
+const setInCache = (key: string, data: any) => {
+  cache.set(key, { data, timestamp: Date.now() });
 };
 
 // Subscribers for real-time updates
@@ -55,9 +57,8 @@ const subscribers = {
 export const adminService = {
   // Doctors
   getDoctors: async (): Promise<Doctor[]> => {
-    if (isCacheValid('doctors') && cache.doctors.length > 0) {
-      return cache.doctors;
-    }
+    const cached = getFromCache('doctors');
+    if (cached) return cached;
 
     try {
       const { data, error } = await supabase
@@ -67,12 +68,11 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.doctors = data || [];
-      cache.lastFetch.doctors = Date.now();
-      return cache.doctors;
+      setInCache('doctors', data || []);
+      return data || [];
     } catch (error) {
       console.error('Error fetching doctors:', error);
-      return cache.doctors;
+      return [];
     }
   },
 
@@ -86,8 +86,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.doctors = [...cache.doctors, data];
-      subscribers.doctors.forEach(callback => callback(cache.doctors));
+      cache.delete('doctors');
+      subscribers.doctors.forEach(callback => callback());
       return data;
     } catch (error) {
       console.error('Error adding doctor:', error);
@@ -106,8 +106,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.doctors = cache.doctors.map(d => d.id === id ? { ...d, ...doctor } : d);
-      subscribers.doctors.forEach(callback => callback(cache.doctors));
+      cache.delete('doctors');
+      subscribers.doctors.forEach(callback => callback());
       return data;
     } catch (error) {
       console.error('Error updating doctor:', error);
@@ -124,8 +124,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.doctors = cache.doctors.filter(d => d.id !== id);
-      subscribers.doctors.forEach(callback => callback(cache.doctors));
+      cache.delete('doctors');
+      subscribers.doctors.forEach(callback => callback());
       return true;
     } catch (error) {
       console.error('Error deleting doctor:', error);
@@ -135,9 +135,8 @@ export const adminService = {
 
   // News
   getNews: async (): Promise<NewsItem[]> => {
-    if (isCacheValid('news') && cache.news.length > 0) {
-      return cache.news;
-    }
+    const cached = getFromCache('news');
+    if (cached) return cached;
 
     try {
       const { data, error } = await supabase
@@ -147,12 +146,11 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.news = data || [];
-      cache.lastFetch.news = Date.now();
-      return cache.news;
+      setInCache('news', data || []);
+      return data || [];
     } catch (error) {
       console.error('Error fetching news:', error);
-      return cache.news;
+      return [];
     }
   },
 
@@ -166,8 +164,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.news = [data, ...cache.news];
-      subscribers.news.forEach(callback => callback(cache.news));
+      cache.delete('news');
+      subscribers.news.forEach(callback => callback());
       return data;
     } catch (error) {
       console.error('Error adding news:', error);
@@ -186,8 +184,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.news = cache.news.map(n => n.id === id ? { ...n, ...news } : n);
-      subscribers.news.forEach(callback => callback(cache.news));
+      cache.delete('news');
+      subscribers.news.forEach(callback => callback());
       return data;
     } catch (error) {
       console.error('Error updating news:', error);
@@ -204,8 +202,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.news = cache.news.filter(n => n.id !== id);
-      subscribers.news.forEach(callback => callback(cache.news));
+      cache.delete('news');
+      subscribers.news.forEach(callback => callback());
       return true;
     } catch (error) {
       console.error('Error deleting news:', error);
@@ -215,9 +213,8 @@ export const adminService = {
 
   // Services
   getServices: async (): Promise<Service[]> => {
-    if (isCacheValid('services') && cache.services.length > 0) {
-      return cache.services;
-    }
+    const cached = getFromCache('services');
+    if (cached) return cached;
 
     try {
       const { data, error } = await supabase
@@ -227,12 +224,11 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.services = data || [];
-      cache.lastFetch.services = Date.now();
-      return cache.services;
+      setInCache('services', data || []);
+      return data || [];
     } catch (error) {
       console.error('Error fetching services:', error);
-      return cache.services;
+      return [];
     }
   },
 
@@ -246,8 +242,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.services = [...cache.services, data];
-      subscribers.services.forEach(callback => callback(cache.services));
+      cache.delete('services');
+      subscribers.services.forEach(callback => callback());
       return data;
     } catch (error) {
       console.error('Error adding service:', error);
@@ -266,8 +262,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.services = cache.services.map(s => s.id === id ? { ...s, ...service } : s);
-      subscribers.services.forEach(callback => callback(cache.services));
+      cache.delete('services');
+      subscribers.services.forEach(callback => callback());
       return data;
     } catch (error) {
       console.error('Error updating service:', error);
@@ -284,8 +280,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      cache.services = cache.services.filter(s => s.id !== id);
-      subscribers.services.forEach(callback => callback(cache.services));
+      cache.delete('services');
+      subscribers.services.forEach(callback => callback());
       return true;
     } catch (error) {
       console.error('Error deleting service:', error);
@@ -294,17 +290,17 @@ export const adminService = {
   },
 
   // Subscription handlers
-  subscribeDoctors: (callback: (doctors: Doctor[]) => void) => {
+  subscribeDoctors: (callback: () => void) => {
     subscribers.doctors.add(callback);
     return () => subscribers.doctors.delete(callback);
   },
 
-  subscribeNews: (callback: (news: NewsItem[]) => void) => {
+  subscribeNews: (callback: () => void) => {
     subscribers.news.add(callback);
     return () => subscribers.news.delete(callback);
   },
 
-  subscribeServices: (callback: (services: Service[]) => void) => {
+  subscribeServices: (callback: () => void) => {
     subscribers.services.add(callback);
     return () => subscribers.services.delete(callback);
   }
