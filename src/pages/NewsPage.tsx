@@ -16,11 +16,8 @@ const NewsPage = () => {
     };
     load();
     
-    // Fix: Store the unsubscribe function directly
-    const unsubscribe = adminService.subscribeNews(setNews);
-    
     // Return the unsubscribe function directly
-    return unsubscribe;
+    return adminService.subscribeNews(setNews);
   }, []);
 
   const filteredNews = news.filter(
