@@ -43,6 +43,7 @@ const NewsPage = () => {
       localStorage.setItem('cached_news', JSON.stringify(updatedNews));
     });
     
+    // Возвращаем функцию очистки напрямую
     return unsubscribe;
   }, []);
 
