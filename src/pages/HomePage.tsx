@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Phone, Clock, Stethoscope, HeartPulse, FlaskConical, ChevronRight, ArrowRight } from "lucide-react";
 import { adminService } from "@/services/adminService";
-import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const HomePage = () => {
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -15,12 +16,32 @@ const HomePage = () => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      
+      // Попытка использовать кэшированные данные для быстрой загрузки
+      const cachedDoctors = localStorage.getItem('cached_doctors');
+      const cachedNews = localStorage.getItem('cached_news');
+      const cachedServices = localStorage.getItem('cached_services');
+      
+      if (cachedDoctors && cachedNews && cachedServices) {
+        setDoctors(JSON.parse(cachedDoctors));
+        setNews(JSON.parse(cachedNews));
+        setServices(JSON.parse(cachedServices));
+        setIsLoading(false);
+      }
+      
       try {
+        // Загружаем свежие данные в фоне
         const [doctorsData, newsData, servicesData] = await Promise.all([
           adminService.getDoctors(),
           adminService.getNews(),
           adminService.getServices()
         ]);
+        
+        // Обновляем кэш и состояние
+        localStorage.setItem('cached_doctors', JSON.stringify(doctorsData));
+        localStorage.setItem('cached_news', JSON.stringify(newsData));
+        localStorage.setItem('cached_services', JSON.stringify(servicesData));
+        
         setDoctors(doctorsData);
         setNews(newsData);
         setServices(servicesData);
@@ -33,16 +54,20 @@ const HomePage = () => {
 
     fetchData();
 
-    const unsubscribeDoctors = adminService.subscribeDoctors(async () => {
-      setDoctors(await adminService.getDoctors());
+    // Настраиваем подписки на обновления данных
+    const unsubscribeDoctors = adminService.subscribeDoctors((updatedDoctors) => {
+      setDoctors(updatedDoctors);
+      localStorage.setItem('cached_doctors', JSON.stringify(updatedDoctors));
     });
 
-    const unsubscribeNews = adminService.subscribeNews(async () => {
-      setNews(await adminService.getNews());
+    const unsubscribeNews = adminService.subscribeNews((updatedNews) => {
+      setNews(updatedNews);
+      localStorage.setItem('cached_news', JSON.stringify(updatedNews));
     });
 
-    const unsubscribeServices = adminService.subscribeServices(async () => {
-      setServices(await adminService.getServices());
+    const unsubscribeServices = adminService.subscribeServices((updatedServices) => {
+      setServices(updatedServices);
+      localStorage.setItem('cached_services', JSON.stringify(updatedServices));
     });
 
     return () => {
@@ -52,9 +77,40 @@ const HomePage = () => {
     };
   }, []);
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  // Компоненты для отображения загрузки
+  const DoctorSkeleton = () => (
+    <div className="bg-white rounded-lg overflow-hidden shadow-md">
+      <Skeleton className="h-64 w-full" />
+      <div className="p-6">
+        <Skeleton className="h-5 w-3/4 mb-2" />
+        <Skeleton className="h-4 w-1/2 mb-2" />
+        <Skeleton className="h-3 w-1/3 mb-4" />
+        <Skeleton className="h-4 w-1/4" />
+      </div>
+    </div>
+  );
+  
+  const ServiceSkeleton = () => (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <Skeleton className="h-6 w-3/4 mb-2" />
+      <Skeleton className="h-4 w-1/2 mb-2" />
+      <Skeleton className="h-5 w-1/3" />
+    </div>
+  );
+  
+  const NewsSkeleton = () => (
+    <div className="bg-white rounded-lg overflow-hidden shadow-md">
+      <Skeleton className="h-48 w-full" />
+      <div className="p-6">
+        <Skeleton className="h-4 w-24 mb-2" />
+        <Skeleton className="h-6 w-3/4 mb-2" />
+        <Skeleton className="h-4 w-full mb-1" />
+        <Skeleton className="h-4 w-full mb-1" />
+        <Skeleton className="h-4 w-2/3 mb-4" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -117,9 +173,12 @@ const HomePage = () => {
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
             В нашей клинике работают высококвалифицированные специалисты с многолетним опытом.
           </p>
-          {doctors.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {doctors.slice(0, 4).map((doctor) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {isLoading ? (
+              // Скелетоны для загрузки
+              Array(4).fill(0).map((_, index) => <DoctorSkeleton key={`doctor-skeleton-${index}`} />)
+            ) : doctors.length > 0 ? (
+              doctors.slice(0, 4).map((doctor) => (
                 <div key={doctor.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
                   <div className="h-64 overflow-hidden">
                     <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
@@ -133,11 +192,11 @@ const HomePage = () => {
                     </Link>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="Врачи пока не добавлены" />
-          )}
+              ))
+            ) : (
+              <EmptyState message="Врачи пока не добавлены" />
+            )}
+          </div>
           <div className="mt-12">
             <Button asChild size="lg" className="bg-brand-blue hover:bg-blue-700">
               <Link to="/doctors">Все врачи</Link>
@@ -153,19 +212,22 @@ const HomePage = () => {
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
             Мы предлагаем широкий спектр медицинских услуг.
           </p>
-          {services.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {services.slice(0, 6).map((service) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading ? (
+              // Скелетоны для загрузки
+              Array(6).fill(0).map((_, index) => <ServiceSkeleton key={`service-skeleton-${index}`} />)
+            ) : services.length > 0 ? (
+              services.slice(0, 6).map((service) => (
                 <div key={service.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300">
                   <h3 className="text-xl font-semibold mb-2">{service.name}</h3>
                   <p className="text-gray-600">{service.category}</p>
                   <p className="font-medium mt-2">{service.price.toLocaleString()} сум</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="Услуги пока не добавлены" />
-          )}
+              ))
+            ) : (
+              <EmptyState message="Услуги пока не добавлены" />
+            )}
+          </div>
           <div className="mt-12">
             <Button asChild size="lg" className="bg-brand-red hover:bg-red-700 text-white">
               <Link to="/prices">Показать все цены</Link>
@@ -181,9 +243,12 @@ const HomePage = () => {
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
             Следите за нашими акциями и новостями.
           </p>
-          {news.length > 0 ? (
-            <div className="grid md:grid-cols-3 gap-6">
-              {news.slice(0, 3).map((item) => (
+          <div className="grid md:grid-cols-3 gap-6">
+            {isLoading ? (
+              // Скелетоны для загрузки
+              Array(3).fill(0).map((_, index) => <NewsSkeleton key={`news-skeleton-${index}`} />)
+            ) : news.length > 0 ? (
+              news.slice(0, 3).map((item) => (
                 <div key={item.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
                   <div className="h-48 overflow-hidden">
                     <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
@@ -197,11 +262,11 @@ const HomePage = () => {
                     </Link>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState message="Новости пока не добавлены" />
-          )}
+              ))
+            ) : (
+              <EmptyState message="Новости пока не добавлены" />
+            )}
+          </div>
           <div className="mt-12">
             <Button asChild size="lg" variant="outline" className="border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white">
               <Link to="/news">Все новости</Link>
