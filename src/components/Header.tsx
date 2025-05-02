@@ -9,7 +9,6 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
-  // Убрали "Обратная связь"
   const navLinks = [
     { name: "Главная", path: "/" },
     { name: "Прайс-лист", path: "/prices" },
@@ -44,10 +43,7 @@ const Header = () => {
               <a href="mailto:info@alfadiagnostic.uz" className="text-sm hover:underline">info@alfadiagnostic.uz</a>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <button className="text-sm px-2 py-1 rounded hover:bg-brand-blue-dark">РУС</button>
-            <button className="text-sm px-2 py-1 rounded hover:bg-brand-blue-dark">UZB</button>
-          </div>
+          {/* Language selector removed */}
         </div>
       </div>
       <div className="container mx-auto py-4">

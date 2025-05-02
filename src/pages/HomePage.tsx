@@ -25,39 +25,25 @@ const HomePage = () => {
     const fetchData = async () => {
       setIsLoading(true);
       
-      // Try to use cached data for fast loading
-      const cachedDoctors = localStorage.getItem('cached_doctors');
-      const cachedNews = localStorage.getItem('cached_news');
-      const cachedServices = localStorage.getItem('cached_services');
-      
-      if (cachedDoctors) setDoctors(JSON.parse(cachedDoctors));
-      if (cachedNews) setNews(JSON.parse(cachedNews));
-      if (cachedServices) setServices(JSON.parse(cachedServices));
-      
-      // If we have any cached data, we can show it immediately
-      if (cachedDoctors || cachedNews || cachedServices) {
-        setIsLoading(false);
-      }
-      
       try {
-        // Load fresh data in parallel
-        const [doctorsData, newsData, servicesData] = await Promise.all([
-          adminService.getDoctors(),
-          adminService.getNews(),
-          adminService.getServices()
-        ]);
+        // Load fresh data in parallel without using localStorage
+        // This avoids the localStorage quota error we were seeing
+        const doctorsPromise = adminService.getDoctors();
+        const newsPromise = adminService.getNews();
+        const servicesPromise = adminService.getServices();
         
-        // Update cache and state
-        localStorage.setItem('cached_doctors', JSON.stringify(doctorsData));
-        localStorage.setItem('cached_news', JSON.stringify(newsData));
-        localStorage.setItem('cached_services', JSON.stringify(servicesData));
+        const [doctorsData, newsData, servicesData] = await Promise.all([
+          doctorsPromise, 
+          newsPromise, 
+          servicesPromise
+        ]);
         
         setDoctors(doctorsData);
         setNews(newsData);
         setServices(servicesData);
-        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -67,17 +53,14 @@ const HomePage = () => {
     // Set up subscriptions for data updates
     const unsubscribeDoctors = adminService.subscribeDoctors((updatedDoctors) => {
       setDoctors(updatedDoctors);
-      localStorage.setItem('cached_doctors', JSON.stringify(updatedDoctors));
     });
 
     const unsubscribeNews = adminService.subscribeNews((updatedNews) => {
       setNews(updatedNews);
-      localStorage.setItem('cached_news', JSON.stringify(updatedNews));
     });
 
     const unsubscribeServices = adminService.subscribeServices((updatedServices) => {
       setServices(updatedServices);
-      localStorage.setItem('cached_services', JSON.stringify(updatedServices));
     });
 
     return () => {
@@ -259,7 +242,7 @@ const HomePage = () => {
             {isLoading ? (
               // Skeletons for loading
               Array(3).fill(0).map((_, index) => <NewsSkeleton key={`news-skeleton-${index}`} />)
-            ) : news.length > 0 ? (
+            ) : news && news.length > 0 ? (
               news.slice(0, 3).map((item) => (
                 <div key={item.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
                   <div className="h-48 overflow-hidden">
@@ -276,7 +259,9 @@ const HomePage = () => {
                 </div>
               ))
             ) : (
-              <EmptyState message="Новости пока не добавлены" />
+              <div className="col-span-3">
+                <EmptyState message="Новости пока не добавлены" />
+              </div>
             )}
           </div>
           <div className="mt-12">
