@@ -25,27 +25,29 @@ const HomePage = () => {
     const fetchData = async () => {
       setIsLoading(true);
       
-      // Попытка использовать кэшированные данные для быстрой загрузки
+      // Try to use cached data for fast loading
       const cachedDoctors = localStorage.getItem('cached_doctors');
       const cachedNews = localStorage.getItem('cached_news');
       const cachedServices = localStorage.getItem('cached_services');
       
-      if (cachedDoctors && cachedNews && cachedServices) {
-        setDoctors(JSON.parse(cachedDoctors));
-        setNews(JSON.parse(cachedNews));
-        setServices(JSON.parse(cachedServices));
+      if (cachedDoctors) setDoctors(JSON.parse(cachedDoctors));
+      if (cachedNews) setNews(JSON.parse(cachedNews));
+      if (cachedServices) setServices(JSON.parse(cachedServices));
+      
+      // If we have any cached data, we can show it immediately
+      if (cachedDoctors || cachedNews || cachedServices) {
         setIsLoading(false);
       }
       
       try {
-        // Загружаем свежие данные в фоне
+        // Load fresh data in parallel
         const [doctorsData, newsData, servicesData] = await Promise.all([
           adminService.getDoctors(),
           adminService.getNews(),
           adminService.getServices()
         ]);
         
-        // Обновляем кэш и состояние
+        // Update cache and state
         localStorage.setItem('cached_doctors', JSON.stringify(doctorsData));
         localStorage.setItem('cached_news', JSON.stringify(newsData));
         localStorage.setItem('cached_services', JSON.stringify(servicesData));
@@ -53,16 +55,16 @@ const HomePage = () => {
         setDoctors(doctorsData);
         setNews(newsData);
         setServices(servicesData);
+        setIsLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
-      } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
 
-    // Настраиваем подписки на обновления данных
+    // Set up subscriptions for data updates
     const unsubscribeDoctors = adminService.subscribeDoctors((updatedDoctors) => {
       setDoctors(updatedDoctors);
       localStorage.setItem('cached_doctors', JSON.stringify(updatedDoctors));
@@ -85,7 +87,7 @@ const HomePage = () => {
     };
   }, []);
 
-  // Компоненты для отображения загрузки
+  // Components for loading display
   const DoctorSkeleton = () => (
     <div className="bg-white rounded-lg overflow-hidden shadow-md">
       <Skeleton className="h-64 w-full" />
@@ -183,22 +185,24 @@ const HomePage = () => {
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {isLoading ? (
-              // Скелетоны для загрузки
+              // Skeletons for loading
               Array(4).fill(0).map((_, index) => <DoctorSkeleton key={`doctor-skeleton-${index}`} />)
             ) : doctors.length > 0 ? (
               doctors.slice(0, 4).map((doctor) => (
                 <div key={doctor.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
-                  <div className="h-64 overflow-hidden">
-                    <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-semibold text-lg">{doctor.name}</h3>
-                    <p className="text-brand-blue">{doctor.specialization}</p>
-                    <p className="text-gray-500 text-sm">{doctor.experience}</p>
-                    <Link to="/doctors" className="inline-flex items-center mt-4 text-brand-blue hover:text-brand-red">
-                      Подробнее <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </div>
+                  <Link to={`/doctors/${doctor.id}`} className="block">
+                    <div className="h-64 overflow-hidden">
+                      <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-6">
+                      <h3 className="font-semibold text-lg">{doctor.name}</h3>
+                      <p className="text-brand-blue">{doctor.specialization}</p>
+                      <p className="text-gray-500 text-sm">{doctor.experience}</p>
+                      <div className="inline-flex items-center mt-4 text-brand-blue hover:text-brand-red">
+                        Подробнее <ArrowRight className="ml-2 h-4 w-4" />
+                      </div>
+                    </div>
+                  </Link>
                 </div>
               ))
             ) : (
@@ -222,7 +226,7 @@ const HomePage = () => {
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {isLoading ? (
-              // Скелетоны для загрузки
+              // Skeletons for loading
               Array(6).fill(0).map((_, index) => <ServiceSkeleton key={`service-skeleton-${index}`} />)
             ) : services.length > 0 ? (
               services.slice(0, 6).map((service) => (
@@ -253,13 +257,13 @@ const HomePage = () => {
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             {isLoading ? (
-              // Скелетоны для загрузки
+              // Skeletons for loading
               Array(3).fill(0).map((_, index) => <NewsSkeleton key={`news-skeleton-${index}`} />)
             ) : news.length > 0 ? (
               news.slice(0, 3).map((item) => (
                 <div key={item.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
                   <div className="h-48 overflow-hidden">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                    <img src={item.image || '/placeholder.svg'} alt={item.title} className="w-full h-full object-cover" />
                   </div>
                   <div className="p-6">
                     <div className="text-sm text-gray-500">{item.date}</div>

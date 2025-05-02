@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,7 @@ import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import PriceListPage from "./pages/PriceListPage";
 import DoctorsPage from "./pages/DoctorsPage";
+import DoctorDetailPage from "./pages/DoctorDetailPage";
 import NewsPage from "./pages/NewsPage";
 import NewsDetailPage from "./pages/NewsDetailPage";
 import AppointmentPage from "./pages/AppointmentPage";
@@ -21,7 +23,14 @@ import ExternalServices from "./components/ExternalServices";
 const TAWK_TO_PROPERTY_ID = "68065b7156ea99190dda8d75";
 const TAWK_TO_WIDGET_ID = "1ipcdadm5";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -38,6 +47,7 @@ const App = () => (
             <Route index element={<HomePage />} />
             <Route path="prices" element={<PriceListPage />} />
             <Route path="doctors" element={<DoctorsPage />} />
+            <Route path="doctors/:id" element={<DoctorDetailPage />} />
             <Route path="news" element={<NewsPage />} />
             <Route path="news/:id" element={<NewsDetailPage />} />
             <Route path="appointment" element={<AppointmentPage />} />

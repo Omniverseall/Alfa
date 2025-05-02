@@ -1,5 +1,6 @@
+
 import { Link } from "react-router-dom";
-import { Instagram, Phone, Mail, MapPin, Clock } from "lucide-react"; // Добавлены недостающие иконки
+import { Instagram, Phone, Mail, MapPin, Clock } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -53,8 +54,9 @@ const Footer = () => {
               <li className="flex items-start">
                 <MapPin className="h-5 w-5 mr-2 mt-0.5 text-brand-red" />
                 <div>
-                  <p className="font-medium">Адрес:</p>
-                  <p className="text-gray-300">г. Ташкент, Мирзо-Улугбекский р-он, Карасу 4, дом 2</p>
+                  <p className="font-medium">Наши филиалы:</p>
+                  <p className="text-gray-300 mb-2">1. Медицинская лаборатория: г. Ташкент, ул. Корасув, 4</p>
+                  <p className="text-gray-300">2. Медцентр, клиника: г. Ташкент, Мирзо-Улугбекский р-он, Карасу 4, дом 2</p>
                 </div>
               </li>
               <li className="flex items-start">
@@ -88,8 +90,7 @@ const Footer = () => {
               <li><Link to="/doctors" className="text-gray-300 hover:text-white">Наши врачи</Link></li>
               <li><Link to="/news" className="text-gray-300 hover:text-white">Новости</Link></li>
               <li><Link to="/appointment" className="text-gray-300 hover:text-white">Запись на приём</Link></li>
-              <li><Link to="/admin/login" className="text-gray-400 hover:text-white text-sm">Вход для администратора</Link></li> {/* Added admin login link */}
-              {/* Удалили "Обратная связь" */}
+              <li><Link to="/admin/login" className="text-gray-400 hover:text-white text-sm">Вход для администратора</Link></li>
             </ul>
           </div>
         </div>

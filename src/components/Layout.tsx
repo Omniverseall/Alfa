@@ -5,16 +5,19 @@ import Header from "./Header";
 import Footer from "./Footer";
 import ScrollToTop from "./ScrollToTop";
 import SplashScreen from "./SplashScreen";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const Layout = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Всегда показываем сплэш-экран при каждой загрузке страницы
+  // Always show splash screen on every page load
   useEffect(() => {
-    // Не используем проверку на первое посещение
-    // Всегда показываем сплэш-скрин при каждой загрузке
+    // We intentionally show splash screen on every load
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000); // Ensure splash shows for at least 3 seconds for better UX
+
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
