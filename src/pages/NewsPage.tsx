@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,12 @@ const NewsPage = () => {
       setNews(data);
     };
     load();
+    
+    // Fix: Store the unsubscribe function directly
     const unsubscribe = adminService.subscribeNews(setNews);
-    return () => unsubscribe();
+    
+    // Return the unsubscribe function directly
+    return unsubscribe;
   }, []);
 
   const filteredNews = news.filter(
