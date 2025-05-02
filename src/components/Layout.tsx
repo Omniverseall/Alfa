@@ -11,14 +11,10 @@ const Layout = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Проверка, является ли это первым посещением
+  // Всегда показываем сплэш-экран при каждой загрузке страницы
   useEffect(() => {
-    const hasVisited = sessionStorage.getItem("hasVisited");
-    if (hasVisited) {
-      setShowSplash(false);
-    } else {
-      sessionStorage.setItem("hasVisited", "true");
-    }
+    // Не используем проверку на первое посещение
+    // Всегда показываем сплэш-скрин при каждой загрузке
   }, []);
 
   useEffect(() => {

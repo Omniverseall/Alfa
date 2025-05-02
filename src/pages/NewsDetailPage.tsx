@@ -1,27 +1,72 @@
+
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { adminService, NewsItem } from "@/services/adminService";
 import { Button } from "@/components/ui/button";
 import { Calendar, ArrowLeft } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const NewsDetailPage = () => {
   const { id } = useParams();
   const [newsItem, setNewsItem] = useState<NewsItem | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const newsList = await adminService.getNews();
-      const found = newsList.find((n) => n.id === Number(id));
-      setNewsItem(found || null);
+      setLoading(true);
+      try {
+        // Try to get from cache first for faster loading
+        const cachedNews = localStorage.getItem('cached_news');
+        if (cachedNews) {
+          const parsedNews = JSON.parse(cachedNews);
+          const found = parsedNews.find((n: NewsItem) => n.id === Number(id));
+          if (found) {
+            setNewsItem(found);
+            setLoading(false);
+          }
+        }
+        
+        // Get fresh data from API
+        const newsList = await adminService.getNews();
+        const found = newsList.find((n) => n.id === Number(id));
+        setNewsItem(found || null);
+        setLoading(false);
+      } catch (error) {
+        console.error("Failed to load news:", error);
+        setLoading(false);
+      }
     };
+    
     load();
   }, [id]);
+
+  if (loading) {
+    return (
+      <div className="py-12 md:py-16">
+        <div className="container mx-auto px-4">
+          <div className="mb-6">
+            <Skeleton className="h-10 w-40" />
+          </div>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+            <Skeleton className="h-[400px] w-full" />
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 md:p-8">
+            <Skeleton className="h-8 w-3/4 mb-6" />
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-full mb-4" />
+            <Skeleton className="h-6 w-2/3 mb-4" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!newsItem) {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="text-center">
-          <p>Новость не найдена. Вернитесь к списку новостей.</p>
+          <p className="text-xl text-gray-600 mb-4">Новость не найдена. Вернитесь к списку новостей.</p>
           <Button asChild className="mt-4 bg-brand-blue hover:bg-blue-700">
             <Link to="/news">К списку новостей</Link>
           </Button>

@@ -6,6 +6,14 @@ import { Phone, Clock, Stethoscope, HeartPulse, FlaskConical, ChevronRight, Arro
 import { adminService } from "@/services/adminService";
 import EmptyState from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
+import YandexMap from "@/components/YandexMap";
+
+const LocationCard = ({ title, address }: { title: string; address: string }) => (
+  <div className="bg-white p-4 rounded-lg shadow-md">
+    <h3 className="font-medium text-lg text-brand-blue">{title}</h3>
+    <p className="text-gray-600">{address}</p>
+  </div>
+);
 
 const HomePage = () => {
   const [doctors, setDoctors] = useState<any[]>([]);
@@ -167,7 +175,7 @@ const HomePage = () => {
       </section>
 
       {/* Doctors Section */}
-      <section className="py-16 md:py-24 bg-gray-50">
+      <section className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="section-title mb-4">Наши врачи</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
@@ -206,7 +214,7 @@ const HomePage = () => {
       </section>
 
       {/* Services Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-gray-50">
         <div className="container mx-auto px-4 text-center">
           <h2 className="section-title mb-4">Наши услуги</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
@@ -237,11 +245,11 @@ const HomePage = () => {
       </section>
 
       {/* News Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="section-title mb-4">Новости и акции</h2>
+          <h2 className="section-title mb-4">Новости</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">
-            Следите за нашими акциями и новостями.
+            Следите за нашими новостями.
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             {isLoading ? (
@@ -272,6 +280,29 @@ const HomePage = () => {
               <Link to="/news">Все новости</Link>
             </Button>
           </div>
+        </div>
+      </section>
+
+      {/* Locations Section */}
+      <section className="py-16 md:py-24 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="section-title mb-4">Наши филиалы</h2>
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+              Мы находимся в двух удобных локациях в Ташкенте
+            </p>
+            <div className="grid md:grid-cols-2 gap-6 mb-12">
+              <LocationCard 
+                title="Медицинская лаборатория" 
+                address="ул. Корасув, 4, Ташкент" 
+              />
+              <LocationCard 
+                title="Медцентр, клиника" 
+                address="Ташкент, Мирзо-Улугбекский район, массив Карасу, 4-й квартал, 2" 
+              />
+            </div>
+          </div>
+          <YandexMap />
         </div>
       </section>
     </div>

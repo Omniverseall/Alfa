@@ -12,39 +12,43 @@ const NewsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("Все категории");
 
   useEffect(() => {
-    // Немедленно показываем подготовленный UI
-    const fetchData = async () => {
+    let isMounted = true;
+
+    const load = async () => {
       try {
-        // Попытка получить данные из localStorage для немедленного показа
+        // Попытка использовать кэшированные данные для быстрого отображения
         const cachedNews = localStorage.getItem('cached_news');
-        if (cachedNews) {
+        if (cachedNews && isMounted) {
           setNews(JSON.parse(cachedNews));
           setLoading(false);
         }
         
-        // Затем загружаем свежие данные с сервера
-        const freshNews = await adminService.getNews();
-        
-        // Сохраняем в кэш и обновляем состояние
-        localStorage.setItem('cached_news', JSON.stringify(freshNews));
-        setNews(freshNews);
-        setLoading(false);
+        // Загрузка свежих данных
+        const data = await adminService.getNews();
+        if (isMounted) {
+          setNews(data);
+          localStorage.setItem('cached_news', JSON.stringify(data));
+          setLoading(false);
+        }
       } catch (error) {
-        console.error("Error fetching news:", error);
-        setLoading(false);
+         console.error("Failed to load news:", error);
+         setLoading(false);
       }
     };
 
-    fetchData();
-    
-    // Подписываемся на обновления
+    load();
+
     const unsubscribe = adminService.subscribeNews((updatedNews) => {
-      setNews(updatedNews);
-      localStorage.setItem('cached_news', JSON.stringify(updatedNews));
+        if (isMounted) {
+            setNews(updatedNews);
+            localStorage.setItem('cached_news', JSON.stringify(updatedNews));
+        }
     });
-    
-    // Возвращаем функцию очистки напрямую
-    return unsubscribe;
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   const filteredNews = news.filter(
@@ -77,12 +81,12 @@ const NewsPage = () => {
   );
 
   return (
-    <div className="py-12 md:py-16">
+    <div className="py-12 md:py-16 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">Новости и акции</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Актуальная информация о новостях клиники, акциях и специальных предложениях
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Новости</h1>
+          <p className="text-gray-600 max-w-2xl mx-auto text-base md:text-lg">
+            Актуальная информация о новостях клиники и специальных предложениях
           </p>
         </div>
 
@@ -91,7 +95,11 @@ const NewsPage = () => {
             <Button
               key={category}
               variant={selectedCategory === category ? "default" : "outline"}
-              className={selectedCategory === category ? "bg-brand-blue hover:bg-blue-700" : ""}
+              className={`transition-colors duration-200 ${
+                selectedCategory === category
+                  ? "bg-brand-blue hover:bg-blue-700 text-white"
+                  : "text-gray-700 border-gray-300 hover:bg-gray-100"
+              }`}
               onClick={() => setSelectedCategory(category)}
             >
               {category}
@@ -99,39 +107,53 @@ const NewsPage = () => {
           ))}
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
             renderSkeletons()
-          ) : (
-            filteredNews.map((news) => (
-              <div 
-                key={news.id} 
-                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300"
+          ) : filteredNews.length > 0 ? (
+            filteredNews.map((newsItem) => (
+              <div
+                key={newsItem.id}
+                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col"
               >
-                <div className="h-48 overflow-hidden">
-                  <img 
-                    src={news.image} 
-                    alt={news.title} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center text-sm text-gray-500 mb-2">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    {news.date}
-                    <span className="ml-2 px-2 py-1 bg-gray-100 rounded text-xs">{news.category}</span>
+                {newsItem.image && (
+                   <div className="h-48 w-full overflow-hidden">
+                    <img
+                      src={newsItem.image}
+                      alt={newsItem.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   </div>
-                  <h3 className="font-semibold text-lg mb-3">{news.title}</h3>
-                  <p className="text-gray-600 mb-4 line-clamp-3">{news.content}</p>
-                  <Link 
-                    to={`/news/${news.id}`} 
-                    className="inline-flex items-center text-brand-blue hover:text-brand-red transition-colors font-medium"
-                  >
-                    Читать далее <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                )}
+                <div className="p-6 flex flex-col flex-grow">
+                  <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                    <span className="flex items-center">
+                       <Calendar className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                       {newsItem.date}
+                    </span>
+                    <span className="ml-2 px-2 py-0.5 bg-blue-100 text-brand-blue rounded text-xs font-medium truncate">
+                        {newsItem.category}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-lg mb-3 text-gray-800">{newsItem.title}</h3>
+                  <p className="text-gray-600 mb-4 line-clamp-3 flex-grow">{newsItem.content}</p>
+                  <div className="mt-auto">
+                     <Link
+                        to={`/news/${newsItem.id}`}
+                        className="inline-flex items-center text-brand-blue hover:text-brand-red transition-colors duration-200 font-medium group"
+                      >
+                       Читать далее
+                       <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                      </Link>
+                  </div>
                 </div>
               </div>
             ))
+          ) : (
+             <div className="text-center py-10 text-gray-500 col-span-3">
+                  Нет новостей в выбранной категории.
+             </div>
           )}
         </div>
       </div>
