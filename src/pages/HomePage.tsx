@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { adminService } from "@/services/adminService";
 import EmptyState from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import YandexMap from "@/components/YandexMap";
+import { toast } from "@/components/ui/use-toast";
 
 const LocationCard = ({ title, address }: { title: string; address: string }) => (
   <div className="bg-white p-4 rounded-lg shadow-md">
@@ -20,55 +20,102 @@ const HomePage = () => {
   const [news, setNews] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [dataFetched, setDataFetched] = useState(false);
 
   useEffect(() => {
+    console.log("HomePage useEffect running");
     const fetchData = async () => {
+      if (dataFetched) return; // Prevent multiple fetches
+      
       setIsLoading(true);
+      console.log("Fetching data...");
       
       try {
-        // Load fresh data in parallel without using localStorage
-        // This avoids the localStorage quota error we were seeing
+        // Load all data in parallel for better performance
         const doctorsPromise = adminService.getDoctors();
         const newsPromise = adminService.getNews();
         const servicesPromise = adminService.getServices();
         
-        const [doctorsData, newsData, servicesData] = await Promise.all([
-          doctorsPromise, 
-          newsPromise, 
-          servicesPromise
-        ]);
+        const results = await Promise.allSettled([doctorsPromise, newsPromise, servicesPromise]);
         
-        setDoctors(doctorsData);
-        setNews(newsData);
-        setServices(servicesData);
+        // Process doctors
+        if (results[0].status === 'fulfilled') {
+          setDoctors(results[0].value);
+          console.log(`Loaded ${results[0].value.length} doctors`);
+        } else {
+          console.error("Error loading doctors:", results[0].reason);
+          toast({
+            title: "Ошибка загрузки",
+            description: "Не удалось загрузить данные о врачах",
+            variant: "destructive",
+          });
+        }
+        
+        // Process news
+        if (results[1].status === 'fulfilled') {
+          setNews(results[1].value);
+          console.log(`Loaded ${results[1].value.length} news items`);
+        } else {
+          console.error("Error loading news:", results[1].reason);
+          toast({
+            title: "Ошибка загрузки",
+            description: "Не удалось загрузить новости",
+            variant: "destructive",
+          });
+        }
+        
+        // Process services
+        if (results[2].status === 'fulfilled') {
+          setServices(results[2].value);
+          console.log(`Loaded ${results[2].value.length} services`);
+        } else {
+          console.error("Error loading services:", results[2].reason);
+          toast({
+            title: "Ошибка загрузки",
+            description: "Не удалось загрузить услуги",
+            variant: "destructive",
+          });
+        }
+
+        setDataFetched(true);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error in data fetching:", error);
+        toast({
+          title: "Ошибка",
+          description: "Произошла ошибка при загрузке данных",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
+        console.log("Data fetching completed");
       }
     };
 
     fetchData();
-
-    // Set up subscriptions for data updates
+    
+    // Set up real-time data subscriptions
     const unsubscribeDoctors = adminService.subscribeDoctors((updatedDoctors) => {
       setDoctors(updatedDoctors);
+      console.log("Doctors updated via subscription");
     });
 
     const unsubscribeNews = adminService.subscribeNews((updatedNews) => {
       setNews(updatedNews);
+      console.log("News updated via subscription");
     });
 
     const unsubscribeServices = adminService.subscribeServices((updatedServices) => {
       setServices(updatedServices);
+      console.log("Services updated via subscription");
     });
 
     return () => {
       unsubscribeDoctors();
       unsubscribeNews();
       unsubscribeServices();
+      console.log("HomePage unmounted, subscriptions cleaned up");
     };
-  }, []);
+  }, [dataFetched]);
 
   // Components for loading display
   const DoctorSkeleton = () => (
@@ -170,7 +217,7 @@ const HomePage = () => {
             {isLoading ? (
               // Skeletons for loading
               Array(4).fill(0).map((_, index) => <DoctorSkeleton key={`doctor-skeleton-${index}`} />)
-            ) : doctors.length > 0 ? (
+            ) : doctors && doctors.length > 0 ? (
               doctors.slice(0, 4).map((doctor) => (
                 <div key={doctor.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
                   <Link to={`/doctors/${doctor.id}`} className="block">
@@ -189,7 +236,9 @@ const HomePage = () => {
                 </div>
               ))
             ) : (
-              <EmptyState message="Врачи пока не добавлены" />
+              <div className="col-span-4">
+                <EmptyState message="Врачи пока не добавлены" />
+              </div>
             )}
           </div>
           <div className="mt-12">
@@ -211,7 +260,7 @@ const HomePage = () => {
             {isLoading ? (
               // Skeletons for loading
               Array(6).fill(0).map((_, index) => <ServiceSkeleton key={`service-skeleton-${index}`} />)
-            ) : services.length > 0 ? (
+            ) : services && services.length > 0 ? (
               services.slice(0, 6).map((service) => (
                 <div key={service.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300">
                   <h3 className="text-xl font-semibold mb-2">{service.name}</h3>
@@ -220,7 +269,9 @@ const HomePage = () => {
                 </div>
               ))
             ) : (
-              <EmptyState message="Услуги пока не добавлены" />
+              <div className="col-span-3">
+                <EmptyState message="Услуги пока не добавлены" />
+              </div>
             )}
           </div>
           <div className="mt-12">

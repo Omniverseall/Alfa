@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const Index = () => {
   const navigate = useNavigate();
   
-  // Redirect to HomePage component
+  // Redirect to homepage
   useEffect(() => {
     navigate('/');
   }, [navigate]);

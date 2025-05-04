@@ -10,12 +10,11 @@ const Layout = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Always show splash screen on every page load
+  // Show splash screen for longer to ensure animation completes
   useEffect(() => {
-    // We intentionally show splash screen on every load
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 3000); // Ensure splash shows for at least 3 seconds for better UX
+    }, 5000); // Increased from 3000ms to 5000ms
 
     return () => clearTimeout(timer);
   }, []);
