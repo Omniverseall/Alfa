@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,64 +21,60 @@ const HomePage = () => {
   const [news, setNews] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [dataFetched, setDataFetched] = useState(false);
 
+  // Use local storage for immediate data display
   useEffect(() => {
     console.log("HomePage useEffect running");
+    
+    // First, try to load cached data for immediate display
+    const cachedDoctors = localStorage.getItem('cached_doctors');
+    const cachedNews = localStorage.getItem('cached_news');
+    const cachedServices = localStorage.getItem('cached_services');
+    
+    if (cachedDoctors) {
+      setDoctors(JSON.parse(cachedDoctors));
+    }
+    if (cachedNews) {
+      setNews(JSON.parse(cachedNews));
+    }
+    if (cachedServices) {
+      setServices(JSON.parse(cachedServices));
+    }
+    
+    // If we have cached data for all three, we can stop showing loading state
+    if (cachedDoctors && cachedNews && cachedServices) {
+      setIsLoading(false);
+    }
+    
+    // Now fetch fresh data
     const fetchData = async () => {
-      if (dataFetched) return; // Prevent multiple fetches
-      
-      setIsLoading(true);
       console.log("Fetching data...");
       
       try {
         // Load all data in parallel for better performance
-        const doctorsPromise = adminService.getDoctors();
-        const newsPromise = adminService.getNews();
-        const servicesPromise = adminService.getServices();
+        const [doctorsData, newsData, servicesData] = await Promise.all([
+          adminService.getDoctors(), 
+          adminService.getNews(), 
+          adminService.getServices()
+        ]);
         
-        const results = await Promise.allSettled([doctorsPromise, newsPromise, servicesPromise]);
+        // Update state with fresh data
+        setDoctors(doctorsData);
+        setNews(newsData);
+        setServices(servicesData);
         
-        // Process doctors
-        if (results[0].status === 'fulfilled') {
-          setDoctors(results[0].value);
-          console.log(`Loaded ${results[0].value.length} doctors`);
-        } else {
-          console.error("Error loading doctors:", results[0].reason);
-          toast({
-            title: "Ошибка загрузки",
-            description: "Не удалось загрузить данные о врачах",
-            variant: "destructive",
-          });
-        }
+        // Cache the fresh data
+        localStorage.setItem('cached_doctors', JSON.stringify(doctorsData));
+        localStorage.setItem('cached_news', JSON.stringify(newsData));
+        localStorage.setItem('cached_services', JSON.stringify(servicesData));
         
-        // Process news
-        if (results[1].status === 'fulfilled') {
-          setNews(results[1].value);
-          console.log(`Loaded ${results[1].value.length} news items`);
-        } else {
-          console.error("Error loading news:", results[1].reason);
-          toast({
-            title: "Ошибка загрузки",
-            description: "Не удалось загрузить новости",
-            variant: "destructive",
-          });
-        }
+        // Always set loading to false once we have data
+        setIsLoading(false);
         
-        // Process services
-        if (results[2].status === 'fulfilled') {
-          setServices(results[2].value);
-          console.log(`Loaded ${results[2].value.length} services`);
-        } else {
-          console.error("Error loading services:", results[2].reason);
-          toast({
-            title: "Ошибка загрузки",
-            description: "Не удалось загрузить услуги",
-            variant: "destructive",
-          });
-        }
-
-        setDataFetched(true);
+        console.log(`Loaded ${doctorsData.length} doctors`);
+        console.log(`Loaded ${newsData.length} news items`);
+        console.log(`Loaded ${servicesData.length} services`);
+        console.log("Data fetching completed");
       } catch (error) {
         console.error("Error in data fetching:", error);
         toast({
@@ -85,27 +82,33 @@ const HomePage = () => {
           description: "Произошла ошибка при загрузке данных",
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
-        console.log("Data fetching completed");
+        
+        // Even if there's an error, stop the loading state if we have cached data
+        if (cachedDoctors || cachedNews || cachedServices) {
+          setIsLoading(false);
+        }
       }
     };
 
+    // Start fetching immediately
     fetchData();
     
     // Set up real-time data subscriptions
     const unsubscribeDoctors = adminService.subscribeDoctors((updatedDoctors) => {
       setDoctors(updatedDoctors);
+      localStorage.setItem('cached_doctors', JSON.stringify(updatedDoctors));
       console.log("Doctors updated via subscription");
     });
 
     const unsubscribeNews = adminService.subscribeNews((updatedNews) => {
       setNews(updatedNews);
+      localStorage.setItem('cached_news', JSON.stringify(updatedNews));
       console.log("News updated via subscription");
     });
 
     const unsubscribeServices = adminService.subscribeServices((updatedServices) => {
       setServices(updatedServices);
+      localStorage.setItem('cached_services', JSON.stringify(updatedServices));
       console.log("Services updated via subscription");
     });
 
@@ -115,7 +118,7 @@ const HomePage = () => {
       unsubscribeServices();
       console.log("HomePage unmounted, subscriptions cleaned up");
     };
-  }, [dataFetched]);
+  }, []);
 
   // Components for loading display
   const DoctorSkeleton = () => (

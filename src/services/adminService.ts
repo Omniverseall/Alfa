@@ -38,8 +38,8 @@ const cache = {
   }
 };
 
-// Cache duration in milliseconds (5 minutes)
-const CACHE_DURATION = 5 * 60 * 1000;
+// Cache duration in milliseconds (1 minute - reduced from 5 minutes for faster refreshes)
+const CACHE_DURATION = 1 * 60 * 1000;
 
 const isCacheValid = (type: 'doctors' | 'news' | 'services') => {
   return Date.now() - cache.lastFetch[type] < CACHE_DURATION;
@@ -56,10 +56,12 @@ export const adminService = {
   // Doctors
   getDoctors: async (): Promise<Doctor[]> => {
     if (isCacheValid('doctors') && cache.doctors.length > 0) {
+      console.log("Using cached doctors data");
       return cache.doctors;
     }
 
     try {
+      console.log("Fetching fresh doctors data");
       const { data, error } = await supabase
         .from('doctors')
         .select('*')
@@ -69,6 +71,7 @@ export const adminService = {
 
       cache.doctors = data || [];
       cache.lastFetch.doctors = Date.now();
+      console.log(`Fetched ${cache.doctors.length} doctors from database`);
       return cache.doctors;
     } catch (error) {
       console.error('Error fetching doctors:', error);
@@ -136,10 +139,12 @@ export const adminService = {
   // News
   getNews: async (): Promise<NewsItem[]> => {
     if (isCacheValid('news') && cache.news.length > 0) {
+      console.log("Using cached news data");
       return cache.news;
     }
 
     try {
+      console.log("Fetching fresh news data");
       const { data, error } = await supabase
         .from('news')
         .select('*')
@@ -149,6 +154,7 @@ export const adminService = {
 
       cache.news = data || [];
       cache.lastFetch.news = Date.now();
+      console.log(`Fetched ${cache.news.length} news items from database`);
       return cache.news;
     } catch (error) {
       console.error('Error fetching news:', error);
@@ -216,10 +222,12 @@ export const adminService = {
   // Services
   getServices: async (): Promise<Service[]> => {
     if (isCacheValid('services') && cache.services.length > 0) {
+      console.log("Using cached services data");
       return cache.services;
     }
 
     try {
+      console.log("Fetching fresh services data");
       const { data, error } = await supabase
         .from('services')
         .select('*')
@@ -229,6 +237,7 @@ export const adminService = {
 
       cache.services = data || [];
       cache.lastFetch.services = Date.now();
+      console.log(`Fetched ${cache.services.length} services from database`);
       return cache.services;
     } catch (error) {
       console.error('Error fetching services:', error);

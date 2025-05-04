@@ -14,7 +14,7 @@ const Layout = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 5000); // Increased from 3000ms to 5000ms
+    }, 6500); // Increased from 5000ms to 6500ms to ensure animation completes
 
     return () => clearTimeout(timer);
   }, []);
