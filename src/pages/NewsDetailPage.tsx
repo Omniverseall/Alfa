@@ -17,32 +17,19 @@ const NewsDetailPage = () => {
     const load = async () => {
       setLoading(true);
       try {
-        // Try to get from cache first for faster loading
-        const cachedNewsString = localStorage.getItem('cached_news');
-        if (cachedNewsString) {
-          try {
-            const parsedNews = JSON.parse(cachedNewsString);
-            const found = parsedNews.find((n: NewsItem) => n.id === Number(id));
-            if (found) {
-              setNewsItem(found);
-              setLoading(false);
-            }
-          } catch (e) {
-            console.warn("Error parsing cached news:", e);
-          }
-        }
-        
-        // Get fresh data from API
+        // Load news directly, the service will check cache if needed
         const newsList = await adminService.getNews();
+        console.log(`Got ${newsList.length} news items, looking for ID ${id}`);
+        
         const found = newsList.find((n) => n.id === Number(id));
         
         if (found) {
           setNewsItem(found);
           setLoading(false);
-        } else if (!found && retryCount < 3) {
+        } else if (!found && retryCount < 2) {
           // If not found and we haven't retried too many times, try again
           setRetryCount(prev => prev + 1);
-          setTimeout(() => load(), 1000); // Retry after 1 second
+          setTimeout(() => load(), 500); // Retry after half a second
         } else {
           setLoading(false);
           if (!found) {

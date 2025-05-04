@@ -11,38 +11,40 @@ const NewsPage = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("Все категории");
+  const [loadTrigger, setLoadTrigger] = useState(0); // Used to force reloads
 
   useEffect(() => {
     let isMounted = true;
 
     const load = async () => {
       try {
-        // First attempt to use cached data for immediate display
-        const cachedNewsString = localStorage.getItem('cached_news');
-        if (cachedNewsString && isMounted) {
-          try {
-            const cachedNews = JSON.parse(cachedNewsString);
-            if (cachedNews?.length > 0) {
-              setNews(cachedNews);
-              setLoading(false);
-            }
-          } catch (e) {
-            console.warn("Error parsing cached news:", e);
-          }
-        }
+        console.log("NewsPage: Loading news data");
+        setLoading(true);
         
-        // Load fresh data from service (which manages its own caching)
+        // Load news directly from service
         const data = await adminService.getNews();
-        if (isMounted && data.length > 0) {
-          setNews(data);
-          setLoading(false);
-        } else if (isMounted && loading && data.length === 0) {
-          // If we still don't have data after attempting to load
-          setLoading(false);
-          toast({
-            title: "Информация",
-            description: "Новости загружаются или еще не добавлены",
-          });
+        
+        if (isMounted) {
+          if (data.length > 0) {
+            console.log(`NewsPage: Loaded ${data.length} news items`);
+            setNews(data);
+            setLoading(false);
+          } else if (data.length === 0 && loadTrigger < 2) {
+            // If still no data after initial load, retry once
+            setTimeout(() => {
+              if (isMounted) setLoadTrigger(prev => prev + 1);
+            }, 1000);
+          } else {
+            // If we've tried enough times and still no data
+            setLoading(false);
+            console.log("NewsPage: No news found after retries");
+            if (data.length === 0) {
+              toast({
+                title: "Информация",
+                description: "Новости загружаются или еще не добавлены",
+              });
+            }
+          }
         }
       } catch (error) {
          console.error("Failed to load news:", error);
@@ -61,6 +63,7 @@ const NewsPage = () => {
 
     const unsubscribe = adminService.subscribeNews((updatedNews) => {
         if (isMounted) {
+            console.log(`NewsPage subscription update: ${updatedNews.length} news items`);
             setNews(updatedNews);
             if (loading) setLoading(false);
         }
@@ -70,7 +73,18 @@ const NewsPage = () => {
       isMounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [loadTrigger]); // Depends on loadTrigger to force reload if needed
+
+  // If no news data is available after loading, try one more time after component mount
+  useEffect(() => {
+    if (!loading && news.length === 0 && loadTrigger === 0) {
+      const timer = setTimeout(() => {
+        setLoadTrigger(1);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loading, news, loadTrigger]);
 
   const filteredNews = news.filter(
     (item) => selectedCategory === "Все категории" || item.category === selectedCategory
@@ -109,24 +123,34 @@ const NewsPage = () => {
           <p className="text-gray-600 max-w-2xl mx-auto text-base md:text-lg">
             Актуальная информация о новостях клиники и специальных предложениях
           </p>
+          {!loading && news.length === 0 && (
+            <Button 
+              onClick={() => setLoadTrigger(prev => prev + 1)}
+              className="mt-4 bg-brand-blue hover:bg-blue-700"
+            >
+              Обновить новости
+            </Button>
+          )}
         </div>
 
-        <div className="mb-8 flex flex-wrap gap-2 justify-center">
-          {categories.map((category) => (
-            <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "outline"}
-              className={`transition-colors duration-200 ${
-                selectedCategory === category
-                  ? "bg-brand-blue hover:bg-blue-700 text-white"
-                  : "text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-              onClick={() => setSelectedCategory(category)}
-            >
-              {category}
-            </Button>
-          ))}
-        </div>
+        {news.length > 0 && (
+          <div className="mb-8 flex flex-wrap gap-2 justify-center">
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                className={`transition-colors duration-200 ${
+                  selectedCategory === category
+                    ? "bg-brand-blue hover:bg-blue-700 text-white"
+                    : "text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        )}
 
         <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
@@ -173,7 +197,7 @@ const NewsPage = () => {
             ))
           ) : (
              <div className="text-center py-10 text-gray-500 col-span-3">
-                  Нет новостей в выбранной категории.
+                  {loadTrigger >= 2 ? "Новости еще не добавлены в систему." : "Загрузка новостей..."}
              </div>
           )}
         </div>

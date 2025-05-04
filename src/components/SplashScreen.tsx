@@ -10,8 +10,8 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
       setShowSplash(false);
       setTimeout(() => {
         onComplete();
-      }, 800);
-    }, 4500); // Longer animation duration
+      }, 500); // Reduced from 800ms
+    }, 3000); // Reduced from 4500ms for faster animation
     
     return () => clearTimeout(timer);
   }, [onComplete]);
@@ -25,20 +25,20 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
       className="fixed inset-0 z-50 flex items-center justify-center bg-white h-screen w-screen"
       initial={{ opacity: 1 }}
       animate={{ opacity: showSplash ? 1 : 0 }}
-      transition={{ duration: 0.8 }}
+      transition={{ duration: 0.5 }} // Reduced from 0.8
     >
       <div className="relative flex flex-col items-center justify-center min-h-screen w-full">
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1.2, opacity: 1 }}
-          transition={{ duration: 1.2, ease: "easeOut" }}
+          transition={{ duration: 0.8, ease: "easeOut" }} // Reduced from 1.2
           className="absolute z-0 rounded-full bg-brand-blue/5 w-[400px] h-[400px] md:w-[800px] md:h-[800px]"
         />
         
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1.4, opacity: 0.7 }}
-          transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
+          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }} // Reduced from 1.5, delay from 0.3
           className="absolute z-0 rounded-full bg-brand-red/5 w-[300px] h-[300px] md:w-[600px] md:h-[600px]"
         />
         
@@ -48,8 +48,8 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
             initial={{ scale: 0.5, opacity: 0, y: -80 }}
             animate={{ scale: 1.3, opacity: 1, y: 0 }}
             transition={{ 
-              delay: 0.7,
-              duration: 1.2, 
+              delay: 0.4, // Reduced from 0.7
+              duration: 0.8, // Reduced from 1.2
               ease: "easeInOut" 
             }}
             className="mb-10"
@@ -71,8 +71,8 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
                   initial={{ opacity: 0, y: -80 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ 
-                    duration: 0.7, 
-                    delay: 1.2 + index * 0.15,
+                    duration: 0.5, // Reduced from 0.7
+                    delay: 0.6 + index * 0.1, // Reduced from 1.2 + index * 0.15
                     ease: "easeOut"
                   }}
                 >
@@ -93,8 +93,8 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
                   initial={{ opacity: 0, y: 80 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ 
-                    duration: 0.7, 
-                    delay: 1.8 + index * 0.15,
+                    duration: 0.5, // Reduced from 0.7
+                    delay: 1 + index * 0.1, // Reduced from 1.8 + index * 0.15
                     ease: "easeOut"
                   }}
                 >
@@ -110,11 +110,11 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
             initial={{ width: 0 }}
             animate={{ width: 500, scale: [1, 1.05, 1] }}
             transition={{ 
-              delay: 3.2, 
-              duration: 1,
+              delay: 2, // Reduced from 3.2
+              duration: 0.7, // Reduced from 1
               scale: {
                 repeat: Infinity,
-                duration: 2,
+                duration: 1.5, // Reduced from 2
               }
             }}
           ></motion.div>
@@ -123,7 +123,7 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
             className="mt-6 text-gray-600 text-xl font-medium"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 3.5, duration: 0.8 }}
+            transition={{ delay: 2.2, duration: 0.5 }} // Reduced from 3.5, 0.8
           >
             Клиника в Ташкенте
           </motion.p>
@@ -133,7 +133,7 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
             className="flex mt-8 space-x-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 3.8, duration: 0.8 }}
+            transition={{ delay: 2.5, duration: 0.5 }} // Reduced from 3.8, 0.8
           >
             {[1, 2, 3].map((dot, i) => (
               <motion.div
@@ -143,8 +143,8 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
                 transition={{
                   repeat: Infinity,
                   repeatType: "reverse",
-                  duration: 0.8,
-                  delay: i * 0.2,
+                  duration: 0.6, // Reduced from 0.8
+                  delay: i * 0.15, // Reduced from i * 0.2
                 }}
               />
             ))}

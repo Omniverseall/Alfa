@@ -10,11 +10,11 @@ const Layout = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Show splash screen for longer to ensure animation completes
+  // Show splash screen for less time
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 6500); // Increased from 5000ms to 6500ms to ensure animation completes
+    }, 4000); // Reduced from 6500ms to 4000ms
 
     return () => clearTimeout(timer);
   }, []);
@@ -30,7 +30,7 @@ const Layout = () => {
       {showSplash ? (
         <SplashScreen onComplete={() => setShowSplash(false)} />
       ) : (
-        <div className={`min-h-screen flex flex-col ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}>
+        <div className={`min-h-screen flex flex-col ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}>
           <Header />
           <main className="flex-grow">
             <Outlet />

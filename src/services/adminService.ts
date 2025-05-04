@@ -39,8 +39,8 @@ const cache = {
   }
 };
 
-// Cache duration in milliseconds (reduced to 30 seconds for faster refreshes)
-const CACHE_DURATION = 30 * 1000;
+// Cache duration in milliseconds (reduced to 10 seconds for faster refreshes)
+const CACHE_DURATION = 10 * 1000;
 
 const isCacheValid = (type: 'doctors' | 'news' | 'services') => {
   return Date.now() - cache.lastFetch[type] < CACHE_DURATION;
@@ -57,6 +57,16 @@ const subscribers = {
 const safeStorage = {
   setItem: (key: string, value: string): boolean => {
     try {
+      // Try to remove existing items if we're approaching storage limits
+      try {
+        const oldItems = ['cached_doctors', 'cached_news', 'cached_services'];
+        oldItems.forEach(item => {
+          if (item !== key) localStorage.removeItem(item);
+        });
+      } catch (e) {
+        console.log("Error cleaning storage:", e);
+      }
+      
       localStorage.setItem(key, value);
       return true;
     } catch (error) {
@@ -90,38 +100,67 @@ const notifySubscribers = <T>(type: 'doctors' | 'news' | 'services', data: T[]) 
   subscribers[type].forEach(callback => callback(data));
 };
 
+// For compressing news content to fit in localStorage
+const compressNewsData = (news: NewsItem[]): Partial<NewsItem>[] => {
+  return news.map(item => ({
+    id: item.id,
+    title: item.title,
+    category: item.category,
+    date: item.date,
+    image: item.image,
+    // Either truncate or omit content based on size
+    content: item.content?.length > 100 ? `${item.content.substring(0, 100)}...` : item.content
+  }));
+};
+
 export const adminService = {
   // Doctors
   getDoctors: async (): Promise<Doctor[]> => {
-    // Always return cached data immediately if available
-    if (cache.doctors.length > 0) {
-      console.log("Using cached doctors data");
-    }
+    try {
+      console.log("Fetching doctors data");
+      const { data, error } = await supabase
+        .from('doctors')
+        .select('*')
+        .order('id', { ascending: true });
 
-    // Only fetch from API if cache is expired or empty
-    if (!isCacheValid('doctors') || cache.doctors.length === 0) {
-      try {
-        console.log("Fetching fresh doctors data");
-        const { data, error } = await supabase
-          .from('doctors')
-          .select('*')
-          .order('id', { ascending: true });
+      if (error) throw error;
 
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          cache.doctors = data;
-          cache.lastFetch.doctors = Date.now();
-          console.log(`Fetched ${cache.doctors.length} doctors from database`);
-          
-          // Try to update localStorage but don't fail if it errors
-          safeStorage.setItem('cached_doctors', JSON.stringify(data));
-          
-          // Notify subscribers about the fresh data
-          notifySubscribers('doctors', cache.doctors);
+      if (data && data.length > 0) {
+        cache.doctors = data;
+        cache.lastFetch.doctors = Date.now();
+        console.log(`Fetched ${cache.doctors.length} doctors from database`);
+        
+        // Try to update localStorage but don't fail if it errors
+        safeStorage.setItem('cached_doctors', JSON.stringify(data));
+        
+        // Notify subscribers about the fresh data
+        notifySubscribers('doctors', cache.doctors);
+      } else if (cache.doctors.length === 0) {
+        // Try to load from cache if no data from server
+        const cachedData = safeStorage.getItem('cached_doctors');
+        if (cachedData) {
+          try {
+            const parsedData = JSON.parse(cachedData);
+            cache.doctors = parsedData;
+            notifySubscribers('doctors', cache.doctors);
+          } catch (e) {
+            console.warn("Error parsing cached doctors:", e);
+          }
         }
-      } catch (error) {
-        console.error('Error fetching doctors:', error);
+      }
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      
+      // Try to load from cache on error
+      const cachedData = safeStorage.getItem('cached_doctors');
+      if (cachedData) {
+        try {
+          const parsedData = JSON.parse(cachedData);
+          cache.doctors = parsedData;
+          notifySubscribers('doctors', cache.doctors);
+        } catch (e) {
+          console.warn("Error parsing cached doctors:", e);
+        }
       }
     }
     
@@ -132,7 +171,6 @@ export const adminService = {
     try {
       // Remove the id field if it exists (it shouldn't be passed when adding a new record)
       const doctorData = { ...doctor };
-      delete (doctorData as any).id;
       
       const { data, error } = await supabase
         .from('doctors')
@@ -143,11 +181,7 @@ export const adminService = {
       if (error) throw error;
 
       // Update cache and notify subscribers
-      cache.doctors = [...cache.doctors, data];
-      notifySubscribers('doctors', cache.doctors);
-      
-      // Try to update localStorage
-      safeStorage.setItem('cached_doctors', JSON.stringify(cache.doctors));
+      await adminService.getDoctors(); // Refresh the entire cache
       
       return data;
     } catch (error) {
@@ -167,12 +201,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.doctors = cache.doctors.map(d => d.id === id ? { ...d, ...doctor } : d);
-      notifySubscribers('doctors', cache.doctors);
-      
-      // Try to update localStorage
-      safeStorage.setItem('cached_doctors', JSON.stringify(cache.doctors));
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getDoctors();
       
       return data;
     } catch (error) {
@@ -190,12 +220,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.doctors = cache.doctors.filter(d => d.id !== id);
-      notifySubscribers('doctors', cache.doctors);
-      
-      // Try to update localStorage
-      safeStorage.setItem('cached_doctors', JSON.stringify(cache.doctors));
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getDoctors();
       
       return true;
     } catch (error) {
@@ -206,49 +232,56 @@ export const adminService = {
 
   // News
   getNews: async (): Promise<NewsItem[]> => {
-    // Always return cached data immediately if available
-    if (cache.news.length > 0) {
-      console.log("Using cached news data");
-    }
+    try {
+      console.log("Fetching news data");
+      const { data, error } = await supabase
+        .from('news')
+        .select('*')
+        .order('id', { ascending: false });
 
-    // Only fetch from API if cache is expired or empty
-    if (!isCacheValid('news') || cache.news.length === 0) {
-      try {
-        console.log("Fetching fresh news data");
-        const { data, error } = await supabase
-          .from('news')
-          .select('*')
-          .order('id', { ascending: false });
+      if (error) throw error;
 
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          cache.news = data;
-          cache.lastFetch.news = Date.now();
-          console.log(`Fetched ${cache.news.length} news items from database`);
-          
-          // Try to update localStorage but handle errors gracefully
-          try {
-            // Store a smaller subset or compress data if needed
-            const storableData = data.map(item => ({
-              id: item.id,
-              title: item.title,
-              category: item.category,
-              date: item.date,
-              // Store only a preview of content to save space
-              content: item.content?.substring(0, 150) + (item.content?.length > 150 ? '...' : ''),
-              image: item.image
-            }));
-            safeStorage.setItem('cached_news', JSON.stringify(storableData));
-          } catch (e) {
-            console.warn("Could not save news to localStorage:", e);
-          }
-          
-          // Notify subscribers about the fresh data
-          notifySubscribers('news', cache.news);
+      if (data && data.length > 0) {
+        cache.news = data;
+        cache.lastFetch.news = Date.now();
+        console.log(`Fetched ${cache.news.length} news items from database`);
+        
+        // Try to update localStorage with compressed data
+        try {
+          const compressedNewsData = compressNewsData(data);
+          safeStorage.setItem('cached_news', JSON.stringify(compressedNewsData));
+        } catch (e) {
+          console.warn("Could not save news to localStorage:", e);
         }
-      } catch (error) {
-        console.error('Error fetching news:', error);
+        
+        // Notify subscribers about the fresh data
+        notifySubscribers('news', cache.news);
+      } else if (cache.news.length === 0) {
+        // Try to load from cache if no data from server
+        const cachedData = safeStorage.getItem('cached_news');
+        if (cachedData) {
+          try {
+            const parsedData = JSON.parse(cachedData);
+            cache.news = parsedData;
+            notifySubscribers('news', cache.news);
+          } catch (e) {
+            console.warn("Error parsing cached news:", e);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching news:', error);
+      
+      // Try to load from cache on error
+      const cachedData = safeStorage.getItem('cached_news');
+      if (cachedData) {
+        try {
+          const parsedData = JSON.parse(cachedData);
+          cache.news = parsedData;
+          notifySubscribers('news', cache.news);
+        } catch (e) {
+          console.warn("Error parsing cached news:", e);
+        }
       }
     }
     
@@ -257,36 +290,22 @@ export const adminService = {
 
   addNews: async (news: Omit<NewsItem, 'id'>): Promise<NewsItem | null> => {
     try {
-      // Remove the id field if it exists
-      const newsData = { ...news };
-      delete (newsData as any).id;
+      // Ensure date is set
+      const newsData = { 
+        ...news,
+        date: news.date || new Date().toLocaleDateString() 
+      };
       
       const { data, error } = await supabase
         .from('news')
-        .insert([{ ...newsData, date: new Date().toLocaleDateString() }])
+        .insert([newsData])
         .select()
         .single();
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.news = [data, ...cache.news];
-      notifySubscribers('news', cache.news);
-      
-      // Try to update localStorage with smaller payload
-      try {
-        const storableNews = cache.news.map(item => ({
-          id: item.id,
-          title: item.title,
-          category: item.category,
-          date: item.date,
-          content: item.content?.substring(0, 150) + (item.content?.length > 150 ? '...' : ''),
-          image: item.image
-        }));
-        safeStorage.setItem('cached_news', JSON.stringify(storableNews));
-      } catch (e) {
-        console.warn("Could not save news to localStorage:", e);
-      }
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getNews();
       
       return data;
     } catch (error) {
@@ -306,24 +325,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.news = cache.news.map(n => n.id === id ? { ...n, ...news } : n);
-      notifySubscribers('news', cache.news);
-      
-      // Try to update localStorage with smaller payload
-      try {
-        const storableNews = cache.news.map(item => ({
-          id: item.id,
-          title: item.title,
-          category: item.category,
-          date: item.date,
-          content: item.content?.substring(0, 150) + (item.content?.length > 150 ? '...' : ''),
-          image: item.image
-        }));
-        safeStorage.setItem('cached_news', JSON.stringify(storableNews));
-      } catch (e) {
-        console.warn("Could not save news to localStorage:", e);
-      }
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getNews();
       
       return data;
     } catch (error) {
@@ -341,24 +344,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.news = cache.news.filter(n => n.id !== id);
-      notifySubscribers('news', cache.news);
-      
-      // Try to update localStorage
-      try {
-        const storableNews = cache.news.map(item => ({
-          id: item.id,
-          title: item.title,
-          category: item.category,
-          date: item.date,
-          content: item.content?.substring(0, 150) + (item.content?.length > 150 ? '...' : ''),
-          image: item.image
-        }));
-        safeStorage.setItem('cached_news', JSON.stringify(storableNews));
-      } catch (e) {
-        console.warn("Could not save news to localStorage:", e);
-      }
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getNews();
       
       return true;
     } catch (error) {
@@ -369,35 +356,51 @@ export const adminService = {
 
   // Services
   getServices: async (): Promise<Service[]> => {
-    // Always return cached data immediately if available
-    if (cache.services.length > 0) {
-      console.log("Using cached services data");
-    }
+    try {
+      console.log("Fetching services data");
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .order('id', { ascending: true });
 
-    // Only fetch from API if cache is expired or empty
-    if (!isCacheValid('services') || cache.services.length === 0) {
-      try {
-        console.log("Fetching fresh services data");
-        const { data, error } = await supabase
-          .from('services')
-          .select('*')
-          .order('id', { ascending: true });
+      if (error) throw error;
 
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          cache.services = data;
-          cache.lastFetch.services = Date.now();
-          console.log(`Fetched ${cache.services.length} services from database`);
-          
-          // Try to update localStorage but don't fail if it errors
-          safeStorage.setItem('cached_services', JSON.stringify(data));
-          
-          // Notify subscribers about the fresh data
-          notifySubscribers('services', cache.services);
+      if (data && data.length > 0) {
+        cache.services = data;
+        cache.lastFetch.services = Date.now();
+        console.log(`Fetched ${cache.services.length} services from database`);
+        
+        // Try to update localStorage but don't fail if it errors
+        safeStorage.setItem('cached_services', JSON.stringify(data));
+        
+        // Notify subscribers about the fresh data
+        notifySubscribers('services', cache.services);
+      } else if (cache.services.length === 0) {
+        // Try to load from cache if no data from server
+        const cachedData = safeStorage.getItem('cached_services');
+        if (cachedData) {
+          try {
+            const parsedData = JSON.parse(cachedData);
+            cache.services = parsedData;
+            notifySubscribers('services', cache.services);
+          } catch (e) {
+            console.warn("Error parsing cached services:", e);
+          }
         }
-      } catch (error) {
-        console.error('Error fetching services:', error);
+      }
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      
+      // Try to load from cache on error
+      const cachedData = safeStorage.getItem('cached_services');
+      if (cachedData) {
+        try {
+          const parsedData = JSON.parse(cachedData);
+          cache.services = parsedData;
+          notifySubscribers('services', cache.services);
+        } catch (e) {
+          console.warn("Error parsing cached services:", e);
+        }
       }
     }
     
@@ -408,7 +411,6 @@ export const adminService = {
     try {
       // Remove the id field if it exists
       const serviceData = { ...service };
-      delete (serviceData as any).id;
       
       const { data, error } = await supabase
         .from('services')
@@ -418,12 +420,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.services = [...cache.services, data];
-      notifySubscribers('services', cache.services);
-      
-      // Try to update localStorage
-      safeStorage.setItem('cached_services', JSON.stringify(cache.services));
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getServices();
       
       return data;
     } catch (error) {
@@ -443,12 +441,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.services = cache.services.map(s => s.id === id ? { ...s, ...service } : s);
-      notifySubscribers('services', cache.services);
-      
-      // Try to update localStorage
-      safeStorage.setItem('cached_services', JSON.stringify(cache.services));
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getServices();
       
       return data;
     } catch (error) {
@@ -466,12 +460,8 @@ export const adminService = {
 
       if (error) throw error;
 
-      // Update cache and notify subscribers
-      cache.services = cache.services.filter(s => s.id !== id);
-      notifySubscribers('services', cache.services);
-      
-      // Try to update localStorage
-      safeStorage.setItem('cached_services', JSON.stringify(cache.services));
+      // Update cache and notify subscribers by refreshing data
+      await adminService.getServices();
       
       return true;
     } catch (error) {
@@ -486,6 +476,11 @@ export const adminService = {
     // Immediately call with existing data if available
     if (cache.doctors.length > 0) {
       callback(cache.doctors);
+    } else {
+      // If no cached data, fetch it immediately
+      adminService.getDoctors().then(doctors => {
+        if (doctors.length > 0) callback(doctors);
+      });
     }
     return () => subscribers.doctors.delete(callback);
   },
@@ -495,6 +490,11 @@ export const adminService = {
     // Immediately call with existing data if available
     if (cache.news.length > 0) {
       callback(cache.news);
+    } else {
+      // If no cached data, fetch it immediately
+      adminService.getNews().then(news => {
+        if (news.length > 0) callback(news);
+      });
     }
     return () => subscribers.news.delete(callback);
   },
@@ -504,6 +504,11 @@ export const adminService = {
     // Immediately call with existing data if available
     if (cache.services.length > 0) {
       callback(cache.services);
+    } else {
+      // If no cached data, fetch it immediately
+      adminService.getServices().then(services => {
+        if (services.length > 0) callback(services);
+      });
     }
     return () => subscribers.services.delete(callback);
   },
@@ -527,4 +532,3 @@ export const adminService = {
     }
   }
 };
-
