@@ -5,39 +5,79 @@ import { adminService, NewsItem } from "@/services/adminService";
 import { Button } from "@/components/ui/button";
 import { Calendar, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/use-toast";
 
 const NewsDetailPage = () => {
   const { id } = useParams();
   const [newsItem, setNewsItem] = useState<NewsItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         // Try to get from cache first for faster loading
-        const cachedNews = localStorage.getItem('cached_news');
-        if (cachedNews) {
-          const parsedNews = JSON.parse(cachedNews);
-          const found = parsedNews.find((n: NewsItem) => n.id === Number(id));
-          if (found) {
-            setNewsItem(found);
-            setLoading(false);
+        const cachedNewsString = localStorage.getItem('cached_news');
+        if (cachedNewsString) {
+          try {
+            const parsedNews = JSON.parse(cachedNewsString);
+            const found = parsedNews.find((n: NewsItem) => n.id === Number(id));
+            if (found) {
+              setNewsItem(found);
+              setLoading(false);
+            }
+          } catch (e) {
+            console.warn("Error parsing cached news:", e);
           }
         }
         
         // Get fresh data from API
         const newsList = await adminService.getNews();
         const found = newsList.find((n) => n.id === Number(id));
-        setNewsItem(found || null);
-        setLoading(false);
+        
+        if (found) {
+          setNewsItem(found);
+          setLoading(false);
+        } else if (!found && retryCount < 3) {
+          // If not found and we haven't retried too many times, try again
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => load(), 1000); // Retry after 1 second
+        } else {
+          setLoading(false);
+          if (!found) {
+            toast({
+              title: "Ошибка",
+              description: "Новость не найдена",
+              variant: "destructive",
+            });
+          }
+        }
       } catch (error) {
         console.error("Failed to load news:", error);
         setLoading(false);
+        toast({
+          title: "Ошибка",
+          description: "Не удалось загрузить новость",
+          variant: "destructive",
+        });
       }
     };
     
     load();
+    
+    // Set up subscription for real-time updates
+    const unsubscribe = adminService.subscribeNews((updatedNews) => {
+      const found = updatedNews.find((n) => n.id === Number(id));
+      if (found) {
+        setNewsItem(found);
+        setLoading(false);
+      }
+    });
+    
+    return () => {
+      unsubscribe();
+    };
   }, [id]);
 
   if (loading) {

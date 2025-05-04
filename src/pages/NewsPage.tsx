@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, ArrowRight } from "lucide-react";
 import { adminService, NewsItem } from "@/services/adminService";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/use-toast";
 
 const NewsPage = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -16,23 +17,43 @@ const NewsPage = () => {
 
     const load = async () => {
       try {
-        // Попытка использовать кэшированные данные для быстрого отображения
-        const cachedNews = localStorage.getItem('cached_news');
-        if (cachedNews && isMounted) {
-          setNews(JSON.parse(cachedNews));
-          setLoading(false);
+        // First attempt to use cached data for immediate display
+        const cachedNewsString = localStorage.getItem('cached_news');
+        if (cachedNewsString && isMounted) {
+          try {
+            const cachedNews = JSON.parse(cachedNewsString);
+            if (cachedNews?.length > 0) {
+              setNews(cachedNews);
+              setLoading(false);
+            }
+          } catch (e) {
+            console.warn("Error parsing cached news:", e);
+          }
         }
         
-        // Загрузка свежих данных
+        // Load fresh data from service (which manages its own caching)
         const data = await adminService.getNews();
-        if (isMounted) {
+        if (isMounted && data.length > 0) {
           setNews(data);
-          localStorage.setItem('cached_news', JSON.stringify(data));
           setLoading(false);
+        } else if (isMounted && loading && data.length === 0) {
+          // If we still don't have data after attempting to load
+          setLoading(false);
+          toast({
+            title: "Информация",
+            description: "Новости загружаются или еще не добавлены",
+          });
         }
       } catch (error) {
          console.error("Failed to load news:", error);
-         setLoading(false);
+         if (isMounted) {
+           setLoading(false);
+           toast({
+             title: "Ошибка",
+             description: "Не удалось загрузить новости",
+             variant: "destructive",
+           });
+         }
       }
     };
 
@@ -41,7 +62,7 @@ const NewsPage = () => {
     const unsubscribe = adminService.subscribeNews((updatedNews) => {
         if (isMounted) {
             setNews(updatedNews);
-            localStorage.setItem('cached_news', JSON.stringify(updatedNews));
+            if (loading) setLoading(false);
         }
     });
 
