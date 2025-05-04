@@ -21,35 +21,33 @@ const AdminPage = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
-  const initialDoctorFormState: Doctor = {
-    id: 0,
+  const initialDoctorFormState = {
     name: "",
     specialization: "",
     experience: "",
     education: "",
     description: "",
-    image: null,
+    image: null as string | null,
   };
 
-  const initialNewsFormState: NewsItem = {
-    id: 0,
+  const initialNewsFormState = {
     title: "",
     category: "",
     content: "",
-    image: null,
+    image: null as string | null,
     date: "",
   };
 
-  const initialServiceFormState: Service = {
-    id: 0,
+  const initialServiceFormState = {
     name: "",
     price: 0,
     category: "",
   };
 
-  const [doctorForm, setDoctorForm] = useState<Doctor>(initialDoctorFormState);
-  const [newsForm, setNewsForm] = useState<NewsItem>(initialNewsFormState);
-  const [serviceForm, setServiceForm] = useState<Service>(initialServiceFormState);
+  const [doctorForm, setDoctorForm] = useState(initialDoctorFormState);
+  const [newsForm, setNewsForm] = useState(initialNewsFormState);
+  const [serviceForm, setServiceForm] = useState(initialServiceFormState);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -141,16 +139,19 @@ const AdminPage = () => {
 
   const resetDoctorForm = () => {
     setDoctorForm(initialDoctorFormState);
+    setEditingId(null);
     setShowDoctorForm(false);
   };
 
   const resetNewsForm = () => {
     setNewsForm(initialNewsFormState);
+    setEditingId(null);
     setShowNewsForm(false);
   };
 
   const resetServiceForm = () => {
     setServiceForm(initialServiceFormState);
+    setEditingId(null);
     setShowServiceForm(false);
   };
 
@@ -158,23 +159,21 @@ const AdminPage = () => {
   const handleDoctorSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const doctorData = {
-        ...doctorForm,
-        image: doctorForm.image || null,
-      };
-
-      if (doctorForm.id && doctorForm.id !== 0) {
-        await adminService.updateDoctor(doctorForm.id, doctorData);
+      if (editingId !== null) {
+        await adminService.updateDoctor(editingId, doctorForm);
+        toast({
+          title: "Врач обновлен",
+          description: `Врач ${doctorForm.name} был успешно обновлен.`,
+        });
       } else {
-        // Pass the full doctorData (which has id: 0)
-        await adminService.addDoctor(doctorData); // FIX: Pass full object
+        await adminService.addDoctor(doctorForm);
+        toast({
+          title: "Врач добавлен",
+          description: `Врач ${doctorForm.name} был успешно добавлен.`,
+        });
       }
       await loadData();
       resetDoctorForm();
-      toast({
-        title: doctorForm.id && doctorForm.id !== 0 ? "Врач обновлен" : "Врач добавлен",
-        description: `Врач ${doctorForm.name} был успешно ${doctorForm.id && doctorForm.id !== 0 ? "обновлен" : "добавлен"}.`,
-      });
     } catch (error) {
       console.error("Doctor submit error:", error);
       toast({
@@ -188,23 +187,21 @@ const AdminPage = () => {
   const handleNewsSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-        const newsData = {
-            ...newsForm,
-            image: newsForm.image || null,
-        };
-
-        if (newsForm.id && newsForm.id !== 0) {
-            await adminService.updateNews(newsForm.id, newsData);
-        } else {
-            // Pass the full newsData (which has id: 0)
-            await adminService.addNews(newsData); // FIX: Pass full object
-        }
+      if (editingId !== null) {
+        await adminService.updateNews(editingId, newsForm);
+        toast({
+          title: "Новость обновлена",
+          description: `Новость "${newsForm.title}" была успешно обновлена.`,
+        });
+      } else {
+        await adminService.addNews(newsForm);
+        toast({
+          title: "Новость добавлена",
+          description: `Новость "${newsForm.title}" была успешно добавлена.`,
+        });
+      }
       await loadData();
       resetNewsForm();
-      toast({
-        title: newsForm.id && newsForm.id !== 0 ? "Новость обновлена" : "Новость добавлена",
-        description: `Новость "${newsForm.title}" была успешно ${newsForm.id && newsForm.id !== 0 ? "обновлена" : "добавлена"}.`,
-      });
     } catch (error) {
       console.error("News submit error:", error);
       toast({
@@ -222,23 +219,21 @@ const AdminPage = () => {
         return;
     }
     try {
-        const serviceData = {
-            ...serviceForm,
-            price: Number(serviceForm.price) || 0,
-        };
-
-      if (serviceForm.id && serviceForm.id !== 0) {
-        await adminService.updateService(serviceForm.id, serviceData);
+      if (editingId !== null) {
+        await adminService.updateService(editingId, serviceForm);
+        toast({
+          title: "Услуга обновлена",
+          description: `Услуга "${serviceForm.name}" была успешно обновлена.`,
+        });
       } else {
-        // Pass the full serviceData (which has id: 0)
-        await adminService.addService(serviceData); // FIX: Pass full object
+        await adminService.addService(serviceForm);
+        toast({
+          title: "Услуга добавлена",
+          description: `Услуга "${serviceForm.name}" была успешно добавлена.`,
+        });
       }
       await loadData();
       resetServiceForm();
-      toast({
-        title: serviceForm.id && serviceForm.id !== 0 ? "Услуга обновлена" : "Услуга добавлена",
-        description: `Услуга "${serviceForm.name}" была успешно ${serviceForm.id && serviceForm.id !== 0 ? "обновлена" : "добавлена"}.`,
-      });
     } catch (error) {
       console.error("Service submit error:", error);
       toast({
@@ -250,21 +245,41 @@ const AdminPage = () => {
   };
 
   const handleEditDoctor = (doctor: Doctor) => {
-    setDoctorForm(doctor);
+    setDoctorForm({
+      name: doctor.name,
+      specialization: doctor.specialization || "",
+      experience: doctor.experience || "",
+      education: doctor.education || "",
+      description: doctor.description || "",
+      image: doctor.image
+    });
+    setEditingId(doctor.id);
     setShowDoctorForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleEditNews = (newsItem: NewsItem) => { // Type is correct here now
-    setNewsForm(newsItem);
+  const handleEditNews = (newsItem: NewsItem) => {
+    setNewsForm({
+      title: newsItem.title,
+      category: newsItem.category || "",
+      content: newsItem.content || "",
+      image: newsItem.image,
+      date: newsItem.date || ""
+    });
+    setEditingId(newsItem.id);
     setShowNewsForm(true);
-     window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleEditService = (service: Service) => {
-    setServiceForm({ ...service, price: service.price ?? 0 });
+    setServiceForm({
+      name: service.name,
+      category: service.category || "",
+      price: service.price ?? 0
+    });
+    setEditingId(service.id);
     setShowServiceForm(true);
-     window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: number, type: "doctor" | "news" | "service") => {
@@ -357,7 +372,7 @@ const AdminPage = () => {
                 {showDoctorForm && (
                   <Card className="p-6 mb-6 border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4">
-                      {doctorForm.id && doctorForm.id !== 0 ? "Редактировать врача" : "Добавить врача"}
+                      {editingId !== null ? "Редактировать врача" : "Добавить врача"}
                     </h3>
                     <form onSubmit={handleDoctorSubmit}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -402,7 +417,7 @@ const AdminPage = () => {
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={resetDoctorForm}>Отмена</Button>
-                        <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{doctorForm.id && doctorForm.id !== 0 ? "Сохранить изменения" : "Добавить врача"}</Button>
+                        <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{editingId !== null ? "Сохранить изменения" : "Добавить врача"}</Button>
                       </div>
                     </form>
                   </Card>
@@ -482,7 +497,7 @@ const AdminPage = () => {
                  {showNewsForm && (
                   <Card className="p-6 mb-6 border border-gray-200">
                     <h3 className="text-lg font-semibold mb-4">
-                        {newsForm.id && newsForm.id !== 0 ? "Редактировать новость" : "Добавить новость"}
+                        {editingId !== null ? "Редактировать новость" : "Добавить новость"}
                     </h3>
                     <form onSubmit={handleNewsSubmit}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -519,7 +534,7 @@ const AdminPage = () => {
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button type="button" variant="outline" onClick={resetNewsForm}>Отмена</Button>
-                        <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{newsForm.id && newsForm.id !== 0 ? "Сохранить изменения" : "Добавить новость"}</Button>
+                        <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{editingId !== null ? "Сохранить изменения" : "Добавить новость"}</Button>
                       </div>
                     </form>
                   </Card>
@@ -615,7 +630,7 @@ const AdminPage = () => {
                   {showServiceForm && (
                     <Card className="p-6 mb-6 border border-gray-200">
                         <h3 className="text-lg font-semibold mb-4">
-                        {serviceForm.id && serviceForm.id !== 0 ? "Редактировать услугу" : "Добавить услугу"}
+                        {editingId !== null ? "Редактировать услугу" : "Добавить услугу"}
                         </h3>
                         <form onSubmit={handleServiceSubmit}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -634,7 +649,7 @@ const AdminPage = () => {
                         </div>
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={resetServiceForm}>Отмена</Button>
-                            <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{serviceForm.id && serviceForm.id !== 0 ? "Сохранить изменения" : "Добавить услугу"}</Button>
+                            <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{editingId !== null ? "Сохранить изменения" : "Добавить услугу"}</Button>
                         </div>
                         </form>
                     </Card>

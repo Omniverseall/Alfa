@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient';
 
 export interface Doctor {
@@ -81,9 +82,13 @@ export const adminService = {
 
   addDoctor: async (doctor: Omit<Doctor, 'id'>): Promise<Doctor | null> => {
     try {
+      // Remove the id field if it exists (it shouldn't be passed when adding a new record)
+      const doctorData = { ...doctor };
+      delete (doctorData as any).id;
+      
       const { data, error } = await supabase
         .from('doctors')
-        .insert([doctor])
+        .insert([doctorData])
         .select()
         .single();
 
@@ -164,9 +169,13 @@ export const adminService = {
 
   addNews: async (news: Omit<NewsItem, 'id'>): Promise<NewsItem | null> => {
     try {
+      // Remove the id field if it exists
+      const newsData = { ...news };
+      delete (newsData as any).id;
+      
       const { data, error } = await supabase
         .from('news')
-        .insert([{ ...news, date: new Date().toLocaleDateString() }])
+        .insert([{ ...newsData, date: new Date().toLocaleDateString() }])
         .select()
         .single();
 
@@ -247,9 +256,13 @@ export const adminService = {
 
   addService: async (service: Omit<Service, 'id'>): Promise<Service | null> => {
     try {
+      // Remove the id field if it exists
+      const serviceData = { ...service };
+      delete (serviceData as any).id;
+      
       const { data, error } = await supabase
         .from('services')
-        .insert([service])
+        .insert([serviceData])
         .select()
         .single();
 
