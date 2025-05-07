@@ -18,17 +18,19 @@ const NewsDetailPage = () => {
       try {
         // Load news directly, the service will check cache if needed
         const newsList = await adminService.getNews();
-        console.log(`Got ${newsList.length} news items, looking for ID ${id}`);
         
-        const found = newsList.find((n) => n.id === id); // Убрано Number(id)
+        const found = newsList.find((n) => n.id === id); // Убрано приведение к строке
         
+        // Убираем логирование
+        // console.log("Загруженные новости:", newsList);
+
+        // Восстанавливаем исходную обработку loading
         if (found) {
           setNewsItem(found);
           setLoading(false);
         } else if (!found && retryCount < 2) {
-          // If not found and we haven't retried too many times, try again
-          setRetryCount(prev => prev + 1);
-          setTimeout(() => load(), 500); // Retry after half a second
+          setRetryCount((prev) => prev + 1);
+          setTimeout(() => load(), 500); // Повторная попытка через 500 мс
         } else {
           setLoading(false);
           if (!found) {

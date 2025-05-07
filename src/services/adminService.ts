@@ -1,5 +1,216 @@
 import { supabase } from './supabaseClient';
-import { getAllNews, addNews, updateNews, deleteNews } from '../lib/localDatabase';
+
+// --- Обновление функций для работы с новостями через Supabase ---
+export const fetchNewsFromSupabase = async (): Promise<NewsItem[]> => {
+  const { data, error } = await supabase.from('news').select('*');
+  if (error) {
+    console.error('Ошибка при получении новостей из Supabase:', error);
+    throw error;
+  }
+  return data || [];
+};
+
+export const addNewsToSupabase = async (newsItem: Omit<NewsItem, 'id' | 'date'>): Promise<void> => {
+  const { error } = await supabase.from('news').insert({ ...newsItem, date: new Date().toISOString() });
+  if (error) {
+    console.error('Ошибка при добавлении новости в Supabase:', error);
+    throw error;
+  }
+};
+
+export const updateNewsInSupabase = async (newsItem: Omit<NewsItem, 'date'>): Promise<void> => {
+  const { error } = await supabase.from('news').update(newsItem).eq('id', newsItem.id);
+  if (error) {
+    console.error('Ошибка при обновлении новости в Supabase:', error);
+    throw error;
+  }
+};
+
+export const deleteNewsFromSupabase = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('news').delete().eq('id', id);
+  if (error) {
+    console.error('Ошибка при удалении новости из Supabase:', error);
+    throw error;
+  }
+};
+
+// Переносим объявление adminService выше, чтобы избежать ошибок использования до объявления
+export const adminService = {
+  // Doctors
+  getDoctors: async (): Promise<Doctor[]> => fetchWithCache('doctors', async () => {
+    const { data, error } = await supabase.from('doctors').select('*').order('id', { ascending: true });
+    return { data, error };
+  }),
+
+  // News
+  getNews: async (): Promise<NewsItem[]> => {
+    return await fetchNewsFromSupabase();
+  },
+
+  addNews: async (newsItem: Omit<NewsItem, 'id' | 'date'>): Promise<void> => {
+    await addNewsToSupabase(newsItem);
+  },
+
+  updateNews: async (newsItem: Omit<NewsItem, 'date'>): Promise<void> => {
+    await updateNewsInSupabase(newsItem);
+  },
+
+  deleteNews: async (id: string): Promise<void> => {
+    await deleteNewsFromSupabase(id);
+  },
+
+  // Services
+  getServices: async (): Promise<Service[]> => fetchWithCache('services', async () => {
+    const { data, error } = await supabase.from('services').select('*').order('id', { ascending: true });
+    return { data, error };
+  }),
+
+  addDoctor: async (doctor: Omit<Doctor, 'id'>): Promise<Doctor | null> => {
+    try {
+      const { id, ...doctorData } = doctor as any;
+      const { data, error } = await supabase
+        .from('doctors')
+        .insert([doctorData])
+        .select()
+        .single();
+      if (error) throw error;
+      adminService.clearCache('doctors');
+      adminService.getDoctors().catch(err => console.error("Failed refetch after adding doctor:", err));
+      return data;
+    } catch (error) {
+      console.error('Error adding doctor:', error);
+      return null;
+    }
+  },
+
+  updateDoctor: async (id: string, doctor: Partial<Omit<Doctor, 'id'>>): Promise<Doctor | null> => {
+     try {
+      const { data, error } = await supabase
+        .from('doctors')
+        .update(doctor)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      adminService.clearCache('doctors');
+      adminService.getDoctors().catch(err => console.error("Failed refetch after updating doctor:", err));
+      return data;
+    } catch (error) {
+       console.error('Error updating doctor:', error);
+       return null;
+    }
+  },
+
+  deleteDoctor: async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.from('doctors').delete().eq('id', id);
+      if (error) throw error;
+      adminService.clearCache('doctors');
+      adminService.getDoctors().catch(err => console.error("Failed refetch after deleting doctor:", err));
+      return true;
+    } catch (error) {
+       console.error('Error deleting doctor:', error);
+       return false;
+    }
+  },
+
+  // Services
+  addService: async (service: Omit<Service, 'id'>): Promise<Service | null> => {
+    try {
+      const { id, ...serviceData } = service as any;
+      const { data, error } = await supabase
+        .from('services')
+        .insert([serviceData])
+        .select()
+        .single();
+      if (error) throw error;
+      adminService.clearCache('services');
+      adminService.getServices().catch(err => console.error("Failed refetch after adding service:", err));
+      return data;
+    } catch (error) {
+      console.error('Error adding service:', error);
+      return null;
+    }
+  },
+
+  updateService: async (id: string, service: Partial<Omit<Service, 'id'>>): Promise<Service | null> => {
+    try {
+       const { data, error } = await supabase
+        .from('services')
+        .update(service)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      adminService.clearCache('services');
+      adminService.getServices().catch(err => console.error("Failed refetch after updating service:", err));
+      return data;
+    } catch (error) {
+      console.error('Error updating service:', error);
+      return null;
+    }
+  },
+
+  deleteService: async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.from('services').delete().eq('id', id);
+      if (error) throw error;
+      adminService.clearCache('services');
+      adminService.getServices().catch(err => console.error("Failed refetch after deleting service:", err));
+      return true;
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      return false;
+    }
+  },
+
+  // Подписки
+ subscribeDoctors: (callback: (doctors: Doctor[]) => void): (() => void) => {
+      subscribers.doctors.add(callback);
+      if (memoryCache.doctors.length > 0 && isMemoryCacheValid('doctors')) {
+          callback([...memoryCache.doctors]);
+      } else if (memoryCache.doctors.length === 0 && isMemoryCacheValid('doctors')) {
+          callback([]);
+      } else {
+          adminService.getDoctors().catch(err => console.error("Initial fetch failed for doctors subscription:", err));
+      }
+      return () => subscribers.doctors.delete(callback);
+  },
+ subscribeNews: (callback: (news: NewsItem[]) => void): (() => void) => {
+      subscribers.news.add(callback);
+      adminService.getNews()
+          .then((news) => {
+              callback(news);
+              notifySubscribers('news', news); // Явное уведомление подписчиков
+          })
+          .catch(err => console.error("Initial fetch failed for news subscription:", err));
+      return () => subscribers.news.delete(callback);
+  },
+ subscribeServices: (callback: (services: Service[]) => void): (() => void) => {
+      subscribers.services.add(callback);
+      if (memoryCache.services.length > 0 && isMemoryCacheValid('services')) {
+          callback([...memoryCache.services]);
+      } else if (memoryCache.services.length === 0 && isMemoryCacheValid('services')) {
+           callback([]);
+      } else {
+          adminService.getServices().catch(err => console.error("Initial fetch failed for services subscription:", err));
+      }
+      return () => subscribers.services.delete(callback);
+  },
+
+
+  // Очистка кэша
+  clearCache: (type?: CacheType) => {
+    const typesToClear: CacheType[] = type ? [type] : ['doctors', 'news', 'services'];
+    typesToClear.forEach(t => {
+      memoryCache[t] = [];
+      memoryCacheLastFetch[t] = 0;
+      safeLocalStorage.removeItem(`cached_${t}`);
+      console.log(`[Cache] Cache cleared for ${t}.`);
+      notifySubscribers(t, []);
+    });
+  }
+};
 
 // --- Интерфейсы данных с UUID ---
 export interface Doctor {
@@ -230,185 +441,19 @@ const fetchWithCache = async (type: 'doctors' | 'news' | 'services', fetchFuncti
     }
 };
 
-
-// --- Экспортируемый сервис ---
-export const adminService = {
-  // Doctors
-  getDoctors: async (): Promise<Doctor[]> => fetchWithCache('doctors', async () => {
-    const { data, error } = await supabase.from('doctors').select('*').order('id', { ascending: true });
+// Добавляем функцию fetchWithCache для новостей
+const fetchNewsWithCache = async (): Promise<NewsItem[]> => {
+  return fetchWithCache('news', async () => {
+    const { data, error } = await supabase.from('news').select('*').order('id', { ascending: true });
     return { data, error };
-  }),
-
-  // News
-  getNews: async (): Promise<NewsItem[]> => {
-    return await getAllNews();
-  },
-
-  addNews: async (newsItem: Omit<NewsItem, 'id' | 'date'>): Promise<void> => {
-    const newNewsItem = { ...newsItem, id: crypto.randomUUID() };
-    await addNews(newNewsItem);
-  },
-
-  updateNews: async (newsItem: Omit<NewsItem, 'date'>): Promise<void> => {
-    await updateNews(newsItem);
-  },
-
-  deleteNews: async (id: string): Promise<void> => {
-    await deleteNews(id);
-  },
-
-  // Services
-  getServices: async (): Promise<Service[]> => fetchWithCache('services', async () => {
-    const { data, error } = await supabase.from('services').select('*').order('id', { ascending: true });
-    return { data, error };
-  }),
-
-  addDoctor: async (doctor: Omit<Doctor, 'id'>): Promise<Doctor | null> => {
-    try {
-      const { id, ...doctorData } = doctor as any;
-      const { data, error } = await supabase
-        .from('doctors')
-        .insert([doctorData])
-        .select()
-        .single();
-      if (error) throw error;
-      adminService.clearCache('doctors');
-      adminService.getDoctors().catch(err => console.error("Failed refetch after adding doctor:", err));
-      return data;
-    } catch (error) {
-      console.error('Error adding doctor:', error);
-      return null;
-    }
-  },
-
-  updateDoctor: async (id: string, doctor: Partial<Omit<Doctor, 'id'>>): Promise<Doctor | null> => {
-     try {
-      const { data, error } = await supabase
-        .from('doctors')
-        .update(doctor)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      adminService.clearCache('doctors');
-      adminService.getDoctors().catch(err => console.error("Failed refetch after updating doctor:", err));
-      return data;
-    } catch (error) {
-       console.error('Error updating doctor:', error);
-       return null;
-    }
-  },
-
-  deleteDoctor: async (id: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase.from('doctors').delete().eq('id', id);
-      if (error) throw error;
-      adminService.clearCache('doctors');
-      adminService.getDoctors().catch(err => console.error("Failed refetch after deleting doctor:", err));
-      return true;
-    } catch (error) {
-       console.error('Error deleting doctor:', error);
-       return false;
-    }
-  },
-
-  // Services
-  addService: async (service: Omit<Service, 'id'>): Promise<Service | null> => {
-    try {
-      const { id, ...serviceData } = service as any;
-      const { data, error } = await supabase
-        .from('services')
-        .insert([serviceData])
-        .select()
-        .single();
-      if (error) throw error;
-      adminService.clearCache('services');
-      adminService.getServices().catch(err => console.error("Failed refetch after adding service:", err));
-      return data;
-    } catch (error) {
-      console.error('Error adding service:', error);
-      return null;
-    }
-  },
-
-  updateService: async (id: string, service: Partial<Omit<Service, 'id'>>): Promise<Service | null> => {
-    try {
-       const { data, error } = await supabase
-        .from('services')
-        .update(service)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      adminService.clearCache('services');
-      adminService.getServices().catch(err => console.error("Failed refetch after updating service:", err));
-      return data;
-    } catch (error) {
-      console.error('Error updating service:', error);
-      return null;
-    }
-  },
-
-  deleteService: async (id: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase.from('services').delete().eq('id', id);
-      if (error) throw error;
-      adminService.clearCache('services');
-      adminService.getServices().catch(err => console.error("Failed refetch after deleting service:", err));
-      return true;
-    } catch (error) {
-      console.error('Error deleting service:', error);
-      return false;
-    }
-  },
-
-  // Подписки
- subscribeDoctors: (callback: (doctors: Doctor[]) => void): (() => void) => {
-      subscribers.doctors.add(callback);
-      if (memoryCache.doctors.length > 0 && isMemoryCacheValid('doctors')) {
-          callback([...memoryCache.doctors]);
-      } else if (memoryCache.doctors.length === 0 && isMemoryCacheValid('doctors')) {
-          callback([]);
-      } else {
-          adminService.getDoctors().catch(err => console.error("Initial fetch failed for doctors subscription:", err));
-      }
-      return () => subscribers.doctors.delete(callback);
-  },
- subscribeNews: (callback: (news: NewsItem[]) => void): (() => void) => {
-      subscribers.news.add(callback);
-      adminService.getNews()
-          .then((news) => {
-              callback(news);
-              notifySubscribers('news', news); // Явное уведомление подписчиков
-          })
-          .catch(err => console.error("Initial fetch failed for news subscription:", err));
-      return () => subscribers.news.delete(callback);
-  },
- subscribeServices: (callback: (services: Service[]) => void): (() => void) => {
-      subscribers.services.add(callback);
-      if (memoryCache.services.length > 0 && isMemoryCacheValid('services')) {
-          callback([...memoryCache.services]);
-      } else if (memoryCache.services.length === 0 && isMemoryCacheValid('services')) {
-           callback([]);
-      } else {
-          adminService.getServices().catch(err => console.error("Initial fetch failed for services subscription:", err));
-      }
-      return () => subscribers.services.delete(callback);
-  },
-
-
-  // Очистка кэша
-  clearCache: (type?: CacheType) => {
-    const typesToClear: CacheType[] = type ? [type] : ['doctors', 'news', 'services'];
-    typesToClear.forEach(t => {
-      memoryCache[t] = [];
-      memoryCacheLastFetch[t] = 0;
-      safeLocalStorage.removeItem(`cached_${t}`);
-      console.log(`[Cache] Cache cleared for ${t}.`);
-      notifySubscribers(t, []);
-    });
-  }
+  });
 };
+
+// Обновляем adminService для использования fetchWithCache
+adminService.getNews = async (): Promise<NewsItem[]> => fetchNewsWithCache();
+adminService.addNews = async (newsItem: Omit<NewsItem, 'id' | 'date'>): Promise<void> => addNewsToSupabase(newsItem);
+adminService.updateNews = async (newsItem: Omit<NewsItem, 'date'>): Promise<void> => updateNewsInSupabase(newsItem);
+adminService.deleteNews = async (id: string): Promise<void> => deleteNewsFromSupabase(id);
 
 // Добавлена предварительная загрузка данных новостей
 let preloadedNews: NewsItem[] | null = null;
