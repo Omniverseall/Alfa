@@ -12,7 +12,7 @@ import DoctorsPage from "./pages/DoctorsPage";
 import DoctorDetailPage from "./pages/DoctorDetailPage";
 import NewsPage from "./pages/NewsPage";
 import NewsDetailPage from "./pages/NewsDetailPage";
-import AppointmentPage from "./pages/AppointmentPage";
+// import AppointmentPage from "./pages/AppointmentPage";
 import AdminPage from "./pages/AdminPage";
 import AdminLogin from "./components/AdminLogin";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -50,7 +50,7 @@ const App = () => (
             <Route path="doctors/:id" element={<DoctorDetailPage />} />
             <Route path="news" element={<NewsPage />} />
             <Route path="news/:id" element={<NewsDetailPage />} />
-            <Route path="appointment" element={<AppointmentPage />} />
+            {/* <Route path="appointment" element={<AppointmentPage />} /> */}
             <Route path="admin" element={
               <ProtectedRoute>
                 <AdminPage />

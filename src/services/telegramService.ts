@@ -36,18 +36,7 @@ export const sendTelegramMessage = async (
 /**
  * Форматирует данные записи на приём в текстовое сообщение для Telegram
  */
-export const formatAppointmentMessage = (formData: any): string => {
-  return `
-<b>📋 Новая запись на приём</b>
-
-<b>Имя:</b> ${formData.firstName} ${formData.lastName}
-<b>Телефон:</b> ${formData.phone}
-<b>Врач:</b> ${formData.doctorName}
-<b>Услуга:</b> ${formData.serviceName}
-<b>Дата и время:</b> ${formData.formattedDate} в ${formData.time}
-${formData.comment ? `<b>Комментарий:</b> ${formData.comment}` : ""}
-`;
-};
+// Удалено formatAppointmentMessage, больше не используется
 
 /**
  * Форматирует данные формы обратной связи в текстовое сообщение для Telegram

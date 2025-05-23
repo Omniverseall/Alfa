@@ -3,761 +3,274 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+// Используем Tabs для основной навигации и для под-вкладок
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Search, Plus, Edit, Trash, Image } from "lucide-react";
-import { adminService, Doctor, NewsItem, Service } from "@/services/adminService";
+import { Search, Plus, Edit, Trash, Image as ImageIcon } from "lucide-react";
+import { adminService, Doctor, NewsItem, GeneralService, DoctorConsultationSlot } from "@/services/adminService";
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
 
+// Обертки для Input и Textarea с Label (оставляем их, если они вам нужны)
+const LabelInput = ({ label, id, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) => (
+  <div>
+    <label htmlFor={id || props.name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <Input id={id || props.name} {...props} />
+  </div>
+);
+const LabelTextarea = ({ label, id, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) => (
+  <div>
+    <label htmlFor={id || props.name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <Textarea id={id || props.name} {...props} />
+  </div>
+);
+
 const AdminPage = () => {
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showDoctorForm, setShowDoctorForm] = useState(false);
+  const [searchQueryServices, setSearchQueryServices] = useState(""); // Отдельный поиск для вкладки услуг
+  const [searchQueryDoctors, setSearchQueryDoctors] = useState(""); // Поиск для врачей
+  const [searchQueryNews, setSearchQueryNews] = useState("");     // Поиск для новостей
+  const [activeMainTab, setActiveMainTab] = useState("doctors");
+  // Состояние для активной под-вкладки на странице "Услуги и Цены"
+  const [activeServiceSubTab, setActiveServiceSubTab] = useState("doctorConsultations");
+
+
+  const [showDoctorProfileForm, setShowDoctorProfileForm] = useState(false);
   const [showNewsForm, setShowNewsForm] = useState(false);
-  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [showGeneralServiceForm, setShowGeneralServiceForm] = useState(false);
+  const [showDoctorSlotForm, setShowDoctorSlotForm] = useState(false);
+
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [loadingNews, setLoadingNews] = useState(true);
-  const [loadingServices, setLoadingServices] = useState(true);
+  const [loadingGeneralServices, setLoadingGeneralServices] = useState(true);
+  const [loadingDoctorSlots, setLoadingDoctorSlots] = useState(true);
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+  const [generalServices, setGeneralServices] = useState<GeneralService[]>([]);
+  const [doctorSlots, setDoctorSlots] = useState<DoctorConsultationSlot[]>([]);
 
-  const initialDoctorFormState = {
-    name: "",
-    specialization: "",
-    experience: "",
-    education: "",
-    description: "",
-    image: null as string | null,
-  };
+  const initialDoctorProfileFormState: Omit<Doctor, 'id'> = { name: "", specialization: "", experience: "", education: "", description: "", image: null };
+  const initialNewsFormState: Omit<NewsItem, 'id'> = { title: "", category: "", content: "", image: null, date: "" };
+  const initialGeneralServiceFormState: Omit<GeneralService, 'id'> = { name: "", price: 0 };
+  const initialDoctorSlotFormState: Omit<DoctorConsultationSlot, 'id'> = { specialization: "", doctor_fio: "", reception_days: "", reception_hours: "", price: 0 };
 
-  const initialNewsFormState = {
-    title: "",
-    category: "",
-    content: "",
-    image: null as string | null,
-    date: "",
-  };
-
-  const initialServiceFormState = {
-    name: "",
-    price: 0,
-    category: "",
-  };
-
-  const [doctorForm, setDoctorForm] = useState(initialDoctorFormState);
+  const [doctorProfileForm, setDoctorProfileForm] = useState(initialDoctorProfileFormState);
   const [newsForm, setNewsForm] = useState(initialNewsFormState);
-  const [serviceForm, setServiceForm] = useState(initialServiceFormState);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [generalServiceForm, setGeneralServiceForm] = useState(initialGeneralServiceFormState);
+  const [doctorSlotForm, setDoctorSlotForm] = useState(initialDoctorSlotFormState);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingEntityType, setEditingEntityType] = useState<"doctorProfile" | "news" | "generalService" | "doctorSlot" | null>(null);
 
   useEffect(() => {
-    loadData();
+    loadAllData();
+    const unsubs = [
+      adminService.subscribeDoctors(setDoctors), adminService.subscribeNews(setNews),
+      adminService.subscribeGeneralServices(setGeneralServices), adminService.subscribeDoctorConsultationSlots(setDoctorSlots)
+    ];
+    return () => unsubs.forEach(unsub => unsub());
   }, []);
 
-  const loadData = async () => {
-    try {
-      setLoadingDoctors(true);
-      setLoadingNews(true);
-      setLoadingServices(true);
+  useEffect(() => { // Сброс специфичных поисков при смене основного таба
+    setSearchQueryServices("");
+    setSearchQueryDoctors("");
+    setSearchQueryNews("");
+  }, [activeMainTab]);
 
-      const [doctorsData, newsData, servicesData] = await Promise.all([
-        adminService.getDoctors(),
-        adminService.getNews(),
-        adminService.getServices(),
+  const loadAllData = async () => {
+    setLoadingDoctors(true); setLoadingNews(true); setLoadingGeneralServices(true); setLoadingDoctorSlots(true);
+    try {
+      await Promise.all([
+        adminService.getDoctors().then(setDoctors), adminService.getNews().then(setNews),
+        adminService.getGeneralServices().then(setGeneralServices), adminService.getDoctorConsultationSlots().then(setDoctorSlots),
       ]);
-
-      if (Array.isArray(doctorsData) && doctorsData.every(item => 'name' in item && 'specialization' in item)) {
-        setDoctors(doctorsData);
-      } else {
-        console.error("Invalid doctors data format");
-      }
-
-      if (Array.isArray(newsData) && newsData.every(item => 'title' in item && 'content' in item)) {
-        setNews(newsData);
-      } else {
-        console.error("Invalid news data format");
-      }
-
-      if (Array.isArray(servicesData) && servicesData.every(item => 'name' in item && 'price' in item)) {
-        setServices(servicesData);
-      } else {
-        console.error("Invalid services data format");
-      }
-    } catch (error) {
-      console.error("Failed to load data:", error);
-      toast({
-        title: "Ошибка загрузки данных",
-        description: "Не удалось получить данные с сервера.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingDoctors(false);
-      setLoadingNews(false);
-      setLoadingServices(false);
-    }
+    } catch (e) { console.error(e); toast({ title: "Ошибка загрузки данных", variant: "destructive" }); }
+    finally { setLoadingDoctors(false); setLoadingNews(false); setLoadingGeneralServices(false); setLoadingDoctorSlots(false); }
   };
 
-  // --- Filtering (REVISED) ---
-  const lowerCaseQuery = searchQuery.toLowerCase();
+  const filteredDoctors = doctors.filter(d => !searchQueryDoctors || d.name.toLowerCase().includes(searchQueryDoctors.toLowerCase()) || d.specialization.toLowerCase().includes(searchQueryDoctors.toLowerCase()));
+  const filteredNews = news.filter(n => !searchQueryNews || n.title.toLowerCase().includes(searchQueryNews.toLowerCase()) || (n.category?.toLowerCase().includes(searchQueryNews.toLowerCase())));
+  
+  // Фильтрация для под-вкладок
+  const filteredGeneralServices = generalServices.filter(s => !searchQueryServices || s.name.toLowerCase().includes(searchQueryServices.toLowerCase()));
+  const filteredDoctorSlots = doctorSlots.filter(s => !searchQueryServices || s.specialization.toLowerCase().includes(searchQueryServices.toLowerCase()) || s.doctor_fio.toLowerCase().includes(searchQueryServices.toLowerCase()));
 
-  const filteredDoctors = doctors.filter((doctor) =>
-      !searchQuery ||
-      doctor.name.toLowerCase().includes(lowerCaseQuery) ||
-      doctor.specialization.toLowerCase().includes(lowerCaseQuery)
-  );
-
-  const filteredNews = news.filter((newsItem) =>
-      !searchQuery ||
-      newsItem.title.toLowerCase().includes(lowerCaseQuery) ||
-      newsItem.category.toLowerCase().includes(lowerCaseQuery)
-  );
-
-  const filteredServices = services.filter((service) =>
-      !searchQuery ||
-      service.name.toLowerCase().includes(lowerCaseQuery) ||
-      service.category.toLowerCase().includes(lowerCaseQuery)
-  );
-
-
-  const handleDoctorFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (setter: React.Dispatch<React.SetStateAction<any>>, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setDoctorForm((prev) => ({ ...prev, [name]: value }));
+    setter(prev => ({ ...prev, [name]: name === "price" ? (value === "" ? 0 : Number(value)) : value }));
+  };
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, formType: "doctorProfile" | "news") => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const imageUrl = reader.result as string;
+      if (formType === "doctorProfile") setDoctorProfileForm(prev => ({ ...prev, image: imageUrl }));
+      else setNewsForm(prev => ({ ...prev, image: imageUrl }));
+    };
+    reader.readAsDataURL(file); e.target.value = "";
   };
 
-  const handleNewsFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewsForm((prev) => ({ ...prev, [name]: value }));
+  const resetAllForms = () => {
+    setDoctorProfileForm(initialDoctorProfileFormState); setShowDoctorProfileForm(false);
+    setNewsForm(initialNewsFormState); setShowNewsForm(false);
+    setGeneralServiceForm(initialGeneralServiceFormState); setShowGeneralServiceForm(false);
+    setDoctorSlotForm(initialDoctorSlotFormState); setShowDoctorSlotForm(false);
+    setEditingId(null); setEditingEntityType(null);
   };
 
-  const handleServiceFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setServiceForm((prev) => ({
-      ...prev,
-      [name]: name === "price" ? (value === "" ? 0 : parseInt(value, 10)) : value,
-    }));
+  const commonSubmitHandler = async (action: () => Promise<any>, entityName: string) => {
+    try { await action(); toast({title: `${entityName} ${editingId ? 'обновлен(а)' : 'добавлен(а)'}`}); resetAllForms(); await loadAllData(); }
+    catch (e) { console.error(e); toast({title: 'Ошибка', description: `Не удалось сохранить ${entityName.toLowerCase()}`, variant: 'destructive'});}
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, formType: "doctor" | "news") => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageUrl = reader.result as string;
-        if (formType === "doctor") {
-          setDoctorForm((prev) => ({ ...prev, image: imageUrl }));
-        } else if (formType === "news") {
-          setNewsForm((prev) => ({ ...prev, image: imageUrl }));
-        }
-      };
-      reader.onerror = (error) => {
-          console.error("Error reading file:", error);
-          toast({ title: "Ошибка чтения файла", variant: "destructive"});
-      }
-      reader.readAsDataURL(file);
-       e.target.value = "";
-    }
+  const handleDoctorProfileSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); commonSubmitHandler(editingId ? () => adminService.updateDoctor(editingId, doctorProfileForm) : () => adminService.addDoctor(doctorProfileForm), "Профиль врача"); };
+  const handleNewsSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); const newsData = {...newsForm, date: newsForm.date || new Date().toISOString().split('T')[0]}; commonSubmitHandler(editingId ? () => adminService.updateNews({...newsData, id: editingId}) : () => adminService.addNews(newsData), "Новость");};
+  const handleGeneralServiceSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); commonSubmitHandler(editingId ? () => adminService.updateGeneralService(editingId, generalServiceForm) : () => adminService.addGeneralService(generalServiceForm), "Услуга");};
+  const handleDoctorSlotSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); commonSubmitHandler(editingId ? () => adminService.updateDoctorConsultationSlot(editingId, doctorSlotForm) : () => adminService.addDoctorConsultationSlot(doctorSlotForm), "Консультация врача");};
+
+  const commonDeleteHandler = async (id: string, type: "doctor"|"news"|"generalService"|"doctorSlot", name?: string) => {
+    if(!window.confirm(`Удалить ${name || 'элемент'}?`)) return;
+    try{
+      let success = false;
+      if(type==='doctor') success = await adminService.deleteDoctor(id);
+      else if(type==='news') success = await adminService.deleteNews(id);
+      else if(type==='generalService') success = await adminService.deleteGeneralService(id);
+      else if(type==='doctorSlot') success = await adminService.deleteDoctorConsultationSlot(id);
+      if(success) {toast({title:'Удалено'}); await loadAllData();} else toast({title:'Ошибка удаления', variant:'destructive'});
+    }catch(e){console.error(e); toast({title:'Ошибка удаления', variant:'destructive'});}
   };
 
-  const resetDoctorForm = () => {
-    setDoctorForm(initialDoctorFormState);
-    setEditingId(null);
-    setShowDoctorForm(false);
-  };
-
-  const resetNewsForm = () => {
-    setNewsForm(initialNewsFormState);
-    setEditingId(null);
-    setShowNewsForm(false);
-  };
-
-  const resetServiceForm = () => {
-    setServiceForm(initialServiceFormState);
-    setEditingId(null);
-    setShowServiceForm(false);
-  };
-
-  // --- Submit Handlers (REVISED Add Logic) ---
-  const handleDoctorSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      if (editingId !== null) {
-        await adminService.updateDoctor(editingId.toString(), doctorForm);
-        toast({
-          title: "Врач обновлен",
-          description: `Врач ${doctorForm.name} был успешно обновлен.`,
-        });
-      } else {
-        await adminService.addDoctor(doctorForm);
-        toast({
-          title: "Врач добавлен",
-          description: `Врач ${doctorForm.name} был успешно добавлен.`,
-        });
-      }
-      await loadData();
-      resetDoctorForm();
-    } catch (error) {
-      console.error("Doctor submit error:", error);
-      toast({
-        title: "Ошибка",
-        description: "Произошла ошибка при сохранении данных врача.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleNewsSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      if (editingId !== null) {
-        await adminService.updateNews({ id: editingId.toString(), ...newsForm });
-        toast({
-          title: "Новость обновлена",
-          description: `Новость "${newsForm.title}" была успешно обновлена.`,
-        });
-      } else {
-        await adminService.addNews(newsForm);
-        toast({
-          title: "Новость добавлена",
-          description: `Новость "${newsForm.title}" была успешно добавлена.`,
-        });
-      }
-      await loadData();
-      resetNewsForm();
-    } catch (error) {
-      console.error("News submit error:", error);
-      toast({
-        title: "Ошибка",
-        description: "Произошла ошибка при сохранении данных новости.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleServiceSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-     if (!serviceForm.name || serviceForm.price < 0 || !serviceForm.category) {
-        toast({ title: "Ошибка", description: "Пожалуйста, заполните все обязательные поля корректно.", variant: "destructive"});
-        return;
-    }
-    try {
-      if (editingId !== null) {
-        await adminService.updateService(editingId.toString(), serviceForm);
-        toast({
-          title: "Услуга обновлена",
-          description: `Услуга "${serviceForm.name}" была успешно обновлена.`,
-        });
-      } else {
-        await adminService.addService(serviceForm);
-        toast({
-          title: "Услуга добавлена",
-          description: `Услуга "${serviceForm.name}" была успешно добавлена.`,
-        });
-      }
-      await loadData();
-      resetServiceForm();
-    } catch (error) {
-      console.error("Service submit error:", error);
-      toast({
-        title: "Ошибка",
-        description: "Произошла ошибка при сохранении данных услуги.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDelete = async (id: string | number, type: "doctor" | "news" | "service") => {
-    const stringId = id.toString(); // Преобразование id в string
-
-    if (!window.confirm("Вы уверены, что хотите удалить этот элемент?")) {
-      return;
-    }
-
-    try {
-      switch (type) {
-        case "doctor":
-          await adminService.deleteDoctor(stringId);
-          break;
-        case "news":
-          await adminService.deleteNews(stringId);
-          break;
-        case "service":
-          await adminService.deleteService(stringId);
-          break;
-        default:
-          console.warn("Unknown delete type:", type);
-          return;
-      }
-      await loadData();
-      toast({
-        title: "Успешно удалено",
-        description: "Элемент был успешно удален.",
-      });
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast({
-        title: "Ошибка удаления",
-        description: "Произошла ошибка при удалении элемента.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditDoctor = (doctor: Doctor) => {
-    setDoctorForm({
-      name: doctor.name,
-      specialization: doctor.specialization || "",
-      experience: doctor.experience || "",
-      education: doctor.education || "",
-      description: doctor.description || "",
-      image: doctor.image,
-    });
-    setEditingId(Number(doctor.id)); // Преобразование id в number
-    setShowDoctorForm(true);
+  const openEditForm = (item: any, type: "doctorProfile"|"news"|"generalService"|"doctorSlot") => {
+    resetAllForms();
+    setEditingId(item.id);
+    setEditingEntityType(type);
+    if(type==='doctorProfile'){ setDoctorProfileForm(item); setShowDoctorProfileForm(true); }
+    else if(type==='news'){ setNewsForm(item.date ? item : {...item, date: new Date().toISOString().split('T')[0]}); setShowNewsForm(true); }
+    else if(type==='generalService'){ setGeneralServiceForm(item); setShowGeneralServiceForm(true); } // Эта форма теперь будет под своей под-вкладкой
+    else if(type==='doctorSlot'){ setDoctorSlotForm(item); setShowDoctorSlotForm(true); } // Эта форма теперь будет под своей под-вкладкой
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleEditNews = (newsItem: NewsItem) => {
-    setNewsForm({
-      title: newsItem.title,
-      category: newsItem.category || "",
-      content: newsItem.content || "",
-      image: newsItem.image,
-      date: newsItem.date || "",
-    });
-    setEditingId(Number(newsItem.id)); // Преобразование id в number
-    setShowNewsForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handleEditService = (service: Service) => {
-    setServiceForm({
-      name: service.name,
-      category: service.category || "",
-      price: service.price ?? 0,
-    });
-    setEditingId(Number(service.id)); // Преобразование id в number
-    setShowServiceForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // --- News Item Rendering (NEW) ---
-  const renderNewsItem = (newsItem) => (
-    <div key={newsItem.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
-        {newsItem.image && (
-            <div className="h-48 w-full overflow-hidden">
-                <img
-                    src={newsItem.image}
-                    alt={newsItem.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy" // Lazy loading для изображений
-                />
-            </div>
-        )}
-        <div className="p-6">
-            <h3 className="font-semibold text-lg mb-2">{newsItem.title}</h3>
-            <p className="text-gray-600 text-sm line-clamp-3">{newsItem.content}</p>
-        </div>
-    </div>
-);
-
-const renderNewsList = () => (
-    news.length > 0 ? (
-        news.map(renderNewsItem)
-    ) : (
-        <div className="text-center py-12 text-gray-500">
-            Нет новостей для отображения.
-        </div>
-    )
-);
-
-  // Исправление JSX
+  const renderLoading = <div className="text-center py-12 text-gray-500">Загрузка...</div>;
+  const renderEmpty = (entityName: string, query?: string) => <div className="text-center py-12 text-gray-500">{query ? `${entityName} не найдены.` : `Список ${entityName.toLowerCase()} пуст.`}</div>;
+  
   return (
-    <Tabs defaultValue="doctors" className="w-full">
+    <Tabs value={activeMainTab} onValueChange={setActiveMainTab} className="w-full">
       <div className="py-12 md:py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-gray-800 mb-4">Панель администратора</h1>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Управление контентом сайта - врачи, новости, услуги
-            </p>
           </div>
 
           <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="doctors" className="text-base py-3">
-              Врачи
-            </TabsTrigger>
-            <TabsTrigger value="news" className="text-base py-3">
-              Новости
-            </TabsTrigger>
-            <TabsTrigger value="services" className="text-base py-3">
-              Услуги и цены
-            </TabsTrigger>
+            <TabsTrigger value="doctors">Врачи</TabsTrigger>
+            <TabsTrigger value="news">Новости</TabsTrigger>
+            <TabsTrigger value="servicesAndSlots">Услуги и Цены</TabsTrigger>
           </TabsList>
 
-          {/* Doctors Tab */}
+          {/* Doctors Tab (Профили врачей) */}
           <TabsContent value="doctors" className="mt-0">
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
               <div className="p-6">
-                {/* Search and Add Button Row */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                   <div className="relative w-full md:w-auto flex-grow md:max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      placeholder="Поиск врачей..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
+                    <Input type="text" placeholder="Поиск врачей (профили)..." value={searchQueryDoctors} onChange={(e) => setSearchQueryDoctors(e.target.value)} className="pl-10"/>
                   </div>
-                  <Button
-                    onClick={() => {
-                      resetDoctorForm();
-                      setShowDoctorForm(true);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="bg-brand-blue hover:bg-blue-700 w-full md:w-auto"
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> Добавить врача
+                  <Button onClick={() => { resetAllForms(); setShowDoctorProfileForm(true); }} className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto">
+                    <Plus className="mr-2 h-4 w-4" /> Добавить профиль врача
                   </Button>
                 </div>
-
-                {/* Doctor Add/Edit Form */}
-                {showDoctorForm && (
-                  <Card className="p-6 mb-6 border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-4">
-                      {editingId !== null ? "Редактировать врача" : "Добавить врача"}
-                    </h3>
-                    <form onSubmit={handleDoctorSubmit}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">ФИО*</label>
-                          <Input id="name" name="name" value={doctorForm.name} onChange={handleDoctorFormChange} placeholder="Иванов Иван Иванович" required />
-                        </div>
-                        <div>
-                          <label htmlFor="specialization" className="block text-sm font-medium text-gray-700 mb-1">Специализация*</label>
-                          <Input id="specialization" name="specialization" value={doctorForm.specialization} onChange={handleDoctorFormChange} placeholder="Кардиолог" required />
-                        </div>
-                        <div>
-                          <label htmlFor="experience" className="block text-sm font-medium text-gray-700 mb-1">Опыт работы*</label>
-                          <Input id="experience" name="experience" value={doctorForm.experience} onChange={handleDoctorFormChange} placeholder="10 лет опыта" required />
-                        </div>
-                        <div>
-                          <label htmlFor="education" className="block text-sm font-medium text-gray-700 mb-1">Образование</label>
-                          <Input id="education" name="education" value={doctorForm.education ?? ''} onChange={handleDoctorFormChange} placeholder="Ташкентская медицинская академия" />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
-                          <Textarea id="description" name="description" value={doctorForm.description ?? ''} onChange={handleDoctorFormChange} placeholder="Информация о враче..." rows={3} />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label htmlFor="doctor-image" className="block text-sm font-medium text-gray-700 mb-1">Фотография</label>
-                          <div className="flex items-center gap-4">
-                            {doctorForm.image && (
-                              <div className="h-20 w-20 rounded overflow-hidden bg-gray-100">
-                                <img src={doctorForm.image} alt="Предпросмотр" className="h-full w-full object-cover" onError={(e) => e.currentTarget.src = PLACEHOLDER_IMAGE} />
-                              </div>
-                            )}
-                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
-                              <Image className="h-4 w-4 mr-2" />
-                              {doctorForm.image ? "Изменить фото" : "Загрузить фото"}
-                              <input id="doctor-image" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "doctor")} />
-                            </label>
-                            {doctorForm.image && (
-                                <Button size="sm" variant="ghost" onClick={() => setDoctorForm(prev => ({...prev, image: null}))} className="text-red-500">Удалить фото</Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={resetDoctorForm}>Отмена</Button>
-                        <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{editingId !== null ? "Сохранить изменения" : "Добавить врача"}</Button>
-                      </div>
-                    </form>
-                  </Card>
-                )}
-
-                {/* Doctors List */}
-                {loadingDoctors ? (
-                  <div className="text-center py-12 text-gray-500">Загрузка врачей...</div>
-                ) : filteredDoctors.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredDoctors.map((doctor) => (
-                      <Card key={doctor.id} className="overflow-hidden">
-                        <div className="flex h-full">
-                          <div className="h-auto w-28 flex-shrink-0 bg-gray-100">
-                            <img
-                              src={doctor.image || PLACEHOLDER_IMAGE}
-                              alt={doctor.name}
-                              className="h-full w-full object-cover"
-                              onError={(e) => e.currentTarget.src = PLACEHOLDER_IMAGE}
-                            />
-                          </div>
-                          <div className="p-4 flex flex-col justify-between flex-grow">
-                            <div>
-                              <h3 className="font-semibold">{doctor.name}</h3>
-                              <p className="text-sm text-gray-600">{doctor.specialization}</p>
-                              <p className="text-xs text-gray-500 mt-1">{doctor.experience}</p>
-                            </div>
-                            <div className="flex justify-end gap-2 mt-3">
-                              <Button size="sm" variant="outline" onClick={() => handleEditDoctor(doctor)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700 border-red-300 hover:bg-red-50" onClick={() => handleDelete(doctor.id.toString(), "doctor")}>
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    {searchQuery ? "Врачи не найдены по вашему запросу." : "Список врачей пуст. Добавьте первого врача!"}
-                  </div>
-                )}
+                {showDoctorProfileForm && ( /* ... Форма для профиля врача (без изменений) ... */ <Card className="p-6 mb-6 border border-gray-200"><h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'doctorProfile' ? "Редактировать профиль врача" : "Добавить профиль врача"}</h3><form onSubmit={handleDoctorProfileSubmit} className="space-y-4"><LabelInput label="ФИО*" name="name" value={doctorProfileForm.name} onChange={e => handleInputChange(setDoctorProfileForm, e)} required /><LabelInput label="Специализация*" name="specialization" value={doctorProfileForm.specialization} onChange={e => handleInputChange(setDoctorProfileForm, e)} required /><LabelInput label="Опыт работы*" name="experience" value={doctorProfileForm.experience} onChange={e => handleInputChange(setDoctorProfileForm, e)} required /><LabelInput label="Образование" name="education" value={doctorProfileForm.education ?? ''} onChange={e => handleInputChange(setDoctorProfileForm, e)} /><LabelTextarea label="Описание" name="description" value={doctorProfileForm.description ?? ''} onChange={e => handleInputChange(setDoctorProfileForm, e)} /><div><label className="block text-sm font-medium text-gray-700 mb-1">Фото</label><div className="flex items-center gap-4">{doctorProfileForm.image && (<img src={doctorProfileForm.image} alt="Предпросмотр" className="h-20 w-20 rounded object-cover"/>)}<label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center"><ImageIcon className="h-4 w-4 mr-2" />{doctorProfileForm.image ? "Изменить" : "Загрузить"}<input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "doctorProfile")} /></label>{doctorProfileForm.image && (<Button size="sm" variant="ghost" onClick={() => setDoctorProfileForm(p => ({ ...p, image: null }))} className="text-red-500">Удалить</Button>)}</div></div><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'doctorProfile' ? "Сохранить" : "Добавить"}</Button></div></form></Card>)}
+                {loadingDoctors ? renderLoading : filteredDoctors.length === 0 ? renderEmpty("Профили врачей", searchQueryDoctors) : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{filteredDoctors.map(d => ( <Card key={d.id} className="overflow-hidden"><img src={d.image || PLACEHOLDER_IMAGE} alt={d.name} className="w-full h-56 object-cover"/><div className="p-4"><h3 className="font-semibold">{d.name}</h3><p className="text-sm text-gray-600">{d.specialization}</p><p className="text-xs text-gray-500 mt-1">{d.experience}</p><div className="mt-3 flex justify-end gap-2"><Button size="sm" variant="outline" onClick={() => openEditForm(d, 'doctorProfile')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={() => commonDeleteHandler(d.id, 'doctor', d.name)}><Trash className="h-4 w-4"/></Button></div></div></Card>))}</div>}
               </div>
             </div>
           </TabsContent>
 
           {/* News Tab */}
           <TabsContent value="news" className="mt-0">
-             <div className="bg-white shadow-md rounded-lg overflow-hidden">
-              <div className="p-6">
-                 {/* Search and Add Button Row */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                  <div className="relative w-full md:w-auto flex-grow md:max-w-md">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      placeholder="Поиск новостей..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button
-                    onClick={() => {
-                      resetNewsForm();
-                      setShowNewsForm(true);
-                       window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="bg-brand-blue hover:bg-blue-700 w-full md:w-auto"
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> Добавить новость
-                  </Button>
-                </div>
-
-                {/* News Add/Edit Form */}
-                 {showNewsForm && (
-                  <Card className="p-6 mb-6 border border-gray-200">
-                    <h3 className="text-lg font-semibold mb-4">
-                        {editingId !== null ? "Редактировать новость" : "Добавить новость"}
-                    </h3>
-                    <form onSubmit={handleNewsSubmit}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div className="md:col-span-2">
-                           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Заголовок*</label>
-                           <Input id="title" name="title" value={newsForm.title} onChange={handleNewsFormChange} placeholder="Заголовок новости" required />
-                        </div>
-                        <div>
-                           <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Категория*</label>
-                           <Input id="category" name="category" value={newsForm.category} onChange={handleNewsFormChange} placeholder="Категория" required />
-                        </div>
-                        <div>
-                          <label htmlFor="news-image" className="block text-sm font-medium text-gray-700 mb-1">Изображение</label>
-                          <div className="flex items-center gap-4">
-                            {newsForm.image && (
-                              <div className="h-20 w-20 rounded overflow-hidden bg-gray-100">
-                                <img src={newsForm.image} alt="Предпросмотр" className="h-full w-full object-cover" onError={(e) => e.currentTarget.src = PLACEHOLDER_IMAGE} />
-                              </div>
-                            )}
-                            <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
-                              <Image className="h-4 w-4 mr-2" />
-                               {newsForm.image ? "Изменить фото" : "Загрузить фото"}
-                              <input id="news-image" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, "news")} />
-                            </label>
-                             {newsForm.image && (
-                                <Button size="sm" variant="ghost" onClick={() => setNewsForm(prev => ({...prev, image: null}))} className="text-red-500">Удалить фото</Button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="md:col-span-2">
-                            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">Содержание*</label>
-                            <Textarea id="content" name="content" value={newsForm.content} onChange={handleNewsFormChange} placeholder="Текст новости..." required rows={5} />
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={resetNewsForm}>Отмена</Button>
-                        <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{editingId !== null ? "Сохранить изменения" : "Добавить новость"}</Button>
-                      </div>
-                    </form>
-                  </Card>
-                 )}
-
-                 {/* News List */}
-                {loadingNews ? (
-                  <div className="text-center py-12 text-gray-500">Загрузка новостей...</div>
-                ) : filteredNews.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200 bg-gray-50">
-                          <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Заголовок</th>
-                          <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Категория</th>
-                          <th className="text-right py-3 px-4 font-semibold text-sm text-gray-600">Действия</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredNews.map((newsItem) => (
-                          <tr key={newsItem.id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="py-3 px-4 align-top">
-                              <div className="flex items-center">
-                                <div className="h-10 w-10 mr-3 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                                  <img
-                                    src={newsItem.image || PLACEHOLDER_IMAGE}
-                                    alt={newsItem.title}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => (e.currentTarget.src = PLACEHOLDER_IMAGE)}
-                                  />
-                                </div>
-                                <span className="font-medium text-gray-800">{newsItem.title}</span>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 align-top">
-                              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">{newsItem.category}</span>
-                            </td>
-                            <td className="py-3 px-4 text-right align-top">
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleEditNews(newsItem)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700 border-red-300 hover:bg-red-50" onClick={() => handleDelete(newsItem.id.toString(), "news")}>
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                     {searchQuery ? "Новости не найдены по вашему запросу." : "Список новостей пуст. Добавьте первую новость!"}
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Services Tab */}
-          <TabsContent value="services" className="mt-0">
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
               <div className="p-6">
-                  {/* Search and Add Button Row */}
-                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div className="relative w-full md:w-auto flex-grow md:max-w-md">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <Input
-                        type="text"
-                        placeholder="Поиск услуг..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
-                        />
+                        <Input type="text" placeholder="Поиск новостей..." value={searchQueryNews} onChange={(e) => setSearchQueryNews(e.target.value)} className="pl-10"/>
                     </div>
-                    <Button
-                        onClick={() => {
-                        resetServiceForm();
-                        setShowServiceForm(true);
-                         window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="bg-brand-blue hover:bg-blue-700 w-full md:w-auto"
-                    >
-                        <Plus className="mr-2 h-4 w-4" /> Добавить услугу
+                    <Button onClick={() => { resetAllForms(); setShowNewsForm(true); }} className="bg-blue-600 hover:bg-blue-700 text-white w-full md:w-auto">
+                        <Plus className="mr-2 h-4 w-4" /> Добавить новость
                     </Button>
-                 </div>
-
-                  {/* Service Add/Edit Form */}
-                  {showServiceForm && (
-                    <Card className="p-6 mb-6 border border-gray-200">
-                        <h3 className="text-lg font-semibold mb-4">
-                        {editingId !== null ? "Редактировать услугу" : "Добавить услугу"}
-                        </h3>
-                        <form onSubmit={handleServiceSubmit}>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div className="md:col-span-2">
-                            <label htmlFor="service-name" className="block text-sm font-medium text-gray-700 mb-1">Наименование услуги*</label>
-                            <Input id="service-name" name="name" value={serviceForm.name} onChange={handleServiceFormChange} placeholder="Консультация терапевта" required />
-                            </div>
-                            <div>
-                            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Цена (сум)*</label>
-                            <Input id="price" name="price" type="number" value={serviceForm.price} onChange={handleServiceFormChange} placeholder="150000" required min="0" />
-                            </div>
-                            <div className="md:col-span-3">
-                             <label htmlFor="service-category" className="block text-sm font-medium text-gray-700 mb-1">Категория*</label>
-                             <Input id="service-category" name="category" value={serviceForm.category} onChange={handleServiceFormChange} placeholder="Терапия" required />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={resetServiceForm}>Отмена</Button>
-                            <Button type="submit" className="bg-brand-blue hover:bg-blue-700">{editingId !== null ? "Сохранить изменения" : "Добавить услугу"}</Button>
-                        </div>
-                        </form>
-                    </Card>
-                    )}
-
-                  {/* Services List */}
-                {loadingServices ? (
-                  <div className="text-center py-12 text-gray-500">Загрузка услуг...</div>
-                ) : filteredServices.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-gray-200 bg-gray-50">
-                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Наименование услуги</th>
-                            <th className="text-left py-3 px-4 font-semibold text-sm text-gray-600">Категория</th>
-                            <th className="text-right py-3 px-4 font-semibold text-sm text-gray-600">Цена (сум)</th>
-                            <th className="text-right py-3 px-4 font-semibold text-sm text-gray-600">Действия</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredServices.map((service) => (
-                            <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="py-3 px-4 font-medium text-gray-800">{service.name}</td>
-                                <td className="py-3 px-4 text-gray-600">{service.category}</td>
-                                <td className="py-3 px-4 text-right font-medium text-gray-800">{service.price.toLocaleString('uz-UZ')}</td>
-                                <td className="py-3 px-4 text-right">
-                                <div className="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => handleEditService(service)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700 border-red-300 hover:bg-red-50" onClick={() => handleDelete(service.id.toString(), "service")}>
-                                        <Trash className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                </td>
-                            </tr>
-                            ))}
-                        </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div className="text-center py-12 text-gray-500">
-                         {searchQuery ? "Услуги не найдены по вашему запросу." : "Список услуг пуст. Добавьте первую услугу!"}
-                    </div>
-                )}
+                </div>
+                {showNewsForm && ( /* ... Форма для новостей (без изменений) ... */ <Card className="p-6 mb-6 border border-gray-200"><h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'news' ? "Редактировать новость" : "Добавить новость"}</h3><form onSubmit={handleNewsSubmit} className="space-y-4"><LabelInput label="Заголовок*" name="title" value={newsForm.title} onChange={e=>handleInputChange(setNewsForm,e)} required /><LabelInput label="Категория*" name="category" value={newsForm.category} onChange={e=>handleInputChange(setNewsForm,e)} required /><LabelInput label="Дата (ГГГГ-ММ-ДД)" name="date" type="date" value={newsForm.date} onChange={e=>handleInputChange(setNewsForm,e)} /><LabelTextarea label="Содержание*" name="content" value={newsForm.content} onChange={e=>handleInputChange(setNewsForm,e)} required /><div><label className="block text-sm font-medium">Изображение</label><div className="flex items-center gap-4 mt-1">{newsForm.image && (<img src={newsForm.image} alt="preview" className="h-20 w-20 rounded object-cover"/>)}<label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center"><ImageIcon className="h-4 w-4 mr-2" />{newsForm.image?"Изменить":"Загрузить"}<input type="file" className="hidden" accept="image/*" onChange={e=>handleImageUpload(e,'news')}/></label>{newsForm.image && <Button size="sm" variant="ghost" onClick={()=>setNewsForm(p=>({...p,image:null}))} className="text-red-500">Удалить</Button>}</div></div><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'news'?"Сохранить":"Добавить"}</Button></div></form></Card>)}
+                {loadingNews?renderLoading:filteredNews.length===0?renderEmpty("Новости", searchQueryNews):<div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b bg-gray-50"><th className="p-3 text-left font-semibold">Заголовок</th><th className="p-3 text-left font-semibold">Категория</th><th className="p-3 text-left font-semibold">Дата</th><th className="p-3 text-right font-semibold">Действия</th></tr></thead><tbody>{filteredNews.map(n=>(<tr key={n.id} className="border-b hover:bg-gray-50"><td className="p-3 flex items-center">{n.image && <img src={n.image} alt="" className="h-10 w-10 object-cover rounded mr-3"/>}{n.title}</td><td className="p-3">{n.category}</td><td className="p-3">{new Date(n.date).toLocaleDateString()}</td><td className="p-3 text-right"><Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(n,'news')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(n.id,'news',n.title)}><Trash className="h-4 w-4"/></Button></td></tr>))}</tbody></table></div>}
               </div>
             </div>
-          </TabsContent>
-        </div>
-      </div>
+        </TabsContent>
+
+        {/* Services and Doctor Slots Tab */}
+        <TabsContent value="servicesAndSlots" className="mt-0">
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <div className="p-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                 <div className="relative w-full md:w-auto flex-grow md:max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input type="text" placeholder="Поиск по услугам/консультациям..." value={searchQueryServices} onChange={(e) => setSearchQueryServices(e.target.value)} className="pl-10"/>
+                  </div>
+                  {/* Кнопки "Добавить" будут внутри под-вкладок */}
+              </div>
+
+              <Tabs value={activeServiceSubTab} onValueChange={setActiveServiceSubTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="doctorConsultations">Консультации врачей (Прайс)</TabsTrigger>
+                  <TabsTrigger value="generalDiagnostics">Диагностика и другие услуги</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="doctorConsultations">
+                  <div className="flex justify-end mb-4">
+                    <Button onClick={() => { resetAllForms(); setShowDoctorSlotForm(true); }} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        <Plus className="mr-2 h-4 w-4" /> Добавить консультацию
+                    </Button>
+                  </div>
+                  {showDoctorSlotForm && (
+                    <Card className="p-6 mb-6 border border-gray-200">
+                      <h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'doctorSlot' ? "Редактировать консультацию" : "Добавить консультацию"}</h3>
+                      <form onSubmit={handleDoctorSlotSubmit} className="space-y-4">
+                          <LabelInput label="Специализация врача (напр. Терапевт)*" name="specialization" value={doctorSlotForm.specialization} onChange={e=>handleInputChange(setDoctorSlotForm, e)} required />
+                          <LabelInput label="ФИО врача*" name="doctor_fio" value={doctorSlotForm.doctor_fio} onChange={e=>handleInputChange(setDoctorSlotForm, e)} required />
+                          <LabelInput label="Дни приёма" name="reception_days" value={doctorSlotForm.reception_days ?? ''} onChange={e=>handleInputChange(setDoctorSlotForm, e)} />
+                          <LabelInput label="Часы приёма" name="reception_hours" value={doctorSlotForm.reception_hours ?? ''} onChange={e=>handleInputChange(setDoctorSlotForm, e)} />
+                          <LabelInput label="Цена*" type="number" name="price" value={doctorSlotForm.price.toString()} onChange={e=>handleInputChange(setDoctorSlotForm, e)} placeholder="0" required min="0"/>
+                          <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'doctorSlot'?"Сохранить":"Добавить"}</Button></div>
+                      </form>
+                    </Card>
+                  )}
+                  {loadingDoctorSlots ? renderLoading : filteredDoctorSlots.length === 0 ? renderEmpty("Консультации врачей", searchQueryServices) : <div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b bg-gray-50"><th className="p-3 text-left font-semibold">Врач (Специализация)</th><th className="p-3 text-left font-semibold">Ф.И.О.</th><th className="p-3 text-left font-semibold">Дни приёма</th><th className="p-3 text-left font-semibold">Часы приёма</th><th className="p-3 text-right font-semibold">Цена</th><th className="p-3 text-right font-semibold">Действия</th></tr></thead><tbody>{filteredDoctorSlots.map(s=>(<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3">{s.specialization}</td><td className="p-3">{s.doctor_fio}</td><td className="p-3">{s.reception_days}</td><td className="p-3">{s.reception_hours}</td><td className="p-3 text-right">{s.price.toLocaleString('uz-UZ')}</td><td className="p-3 text-right"><Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(s,'doctorSlot')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(s.id,'doctorSlot',`${s.specialization} - ${s.doctor_fio}`)}><Trash className="h-4 w-4"/></Button></td></tr>))}</tbody></table></div>}
+                </TabsContent>
+
+                <TabsContent value="generalDiagnostics">
+                  <div className="flex justify-end mb-4">
+                    <Button onClick={() => { resetAllForms(); setShowGeneralServiceForm(true); }} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        <Plus className="mr-2 h-4 w-4" /> Добавить общую услугу
+                    </Button>
+                  </div>
+                  {showGeneralServiceForm && (
+                    <Card className="p-6 mb-6 border border-gray-200">
+                      <h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'generalService' ? "Редактировать услугу" : "Добавить общую услугу"}</h3>
+                      <form onSubmit={handleGeneralServiceSubmit} className="space-y-4">
+                          <LabelInput label="Наименование услуги*" name="name" value={generalServiceForm.name} onChange={e=>handleInputChange(setGeneralServiceForm, e)} required />
+                          <LabelInput label="Цена*" type="number" name="price" value={generalServiceForm.price.toString()} onChange={e=>handleInputChange(setGeneralServiceForm, e)} placeholder="0" required min="0"/>
+                          <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'generalService'?"Сохранить":"Добавить"}</Button></div>
+                      </form>
+                    </Card>
+                  )}
+                  {loadingGeneralServices?renderLoading:filteredGeneralServices.length===0?renderEmpty("Общие услуги", searchQueryServices):<div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b bg-gray-50"><th className="p-3 text-left font-semibold">Наименование услуги</th><th className="p-3 text-right font-semibold">Цена</th><th className="p-3 text-right font-semibold">Действия</th></tr></thead><tbody>{filteredGeneralServices.map(s=>(<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3">{s.name}</td><td className="p-3 text-right">{s.price.toLocaleString('uz-UZ')}</td><td className="p-3 text-right"><Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(s,'generalService')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(s.id,'generalService',s.name)}><Trash className="h-4 w-4"/></Button></td></tr>))}</tbody></table></div>}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </TabsContent>
+      </div></div>
     </Tabs>
   );
 };
-
 export default AdminPage;

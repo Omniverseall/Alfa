@@ -89,7 +89,7 @@ const Footer = () => {
               <li><Link to="/prices" className="text-gray-300 hover:text-white">Прайс-лист</Link></li>
               <li><Link to="/doctors" className="text-gray-300 hover:text-white">Наши врачи</Link></li>
               <li><Link to="/news" className="text-gray-300 hover:text-white">Новости</Link></li>
-              <li><Link to="/appointment" className="text-gray-300 hover:text-white">Запись на приём</Link></li>
+              {/* <li><Link to="/appointment" className="text-gray-300 hover:text-white">Запись на приём</Link></li> */}
             </ul>
           </div>
         </div>

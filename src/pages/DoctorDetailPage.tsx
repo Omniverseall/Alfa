@@ -157,7 +157,7 @@ const DoctorDetailPage = () => {
             </Tabs>
 
             <Button className="mt-8 bg-brand-red hover:bg-red-700">
-              <Link to="/appointment">Записаться на приём</Link>
+              {/* <Link to="/appointment">Записаться на приём</Link> */}
             </Button>
           </div>
         </div>

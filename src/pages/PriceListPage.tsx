@@ -1,46 +1,51 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { adminService } from "@/services/adminService";
-
-interface Service {
-  id: string; // Изменено с number на string для согласованности с adminService
-  name: string;
-  category: string;
-  price: number;
-}
+// Используем GeneralService и getGeneralServices/subscribeGeneralServices
+import { adminService, GeneralService } from "@/services/adminService";
 
 const PriceListPage = () => {
-  const [services, setServices] = useState<Service[]>([]);
+  const [generalServices, setGeneralServices] = useState<GeneralService[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchServices = async () => {
+    let isMounted = true;
+    const fetchAndSetServices = async () => {
+      if (!isMounted) return;
+      setLoading(true);
       try {
-        const fetchedServices = await adminService.getServices();
-        setServices(fetchedServices);
+        // Используем getGeneralServices
+        const fetchedServices = await adminService.getGeneralServices();
+        if (isMounted) setGeneralServices(fetchedServices);
       } catch (error) {
-        console.error("Ошибка загрузки услуг:", error);
+        console.error("Ошибка загрузки общих услуг:", error);
+        if (isMounted) setGeneralServices([]);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
-    fetchServices();
+    fetchAndSetServices();
 
-    const unsubscribe = adminService.subscribeServices(fetchServices);
+    // Используем subscribeGeneralServices
+    const unsubscribe = adminService.subscribeGeneralServices((updatedServices) => {
+        if (isMounted) setGeneralServices(updatedServices);
+    });
 
     return () => {
-      unsubscribe();
+      isMounted = false;
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
-  const filteredServices = services.filter((service) => {
-    const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = !selectedCategory || service.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredServices = generalServices.filter((service) =>
+    service.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const categories = ["Все услуги", ...new Set(services.map((service) => service.category))];
+  if (loading) {
+    return <div className="container mx-auto px-4 py-12 text-center">Загрузка прайс-листа...</div>;
+  }
 
   return (
     <div className="py-12 md:py-16">
@@ -52,69 +57,43 @@ const PriceListPage = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-8">
-          <div className="md:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">Категории</h2>
-              <div className="space-y-2">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category === "Все услуги" ? null : category)}
-                    className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
-                      (category === "Все услуги" && !selectedCategory) || category === selectedCategory
-                        ? "bg-brand-blue text-white"
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="mb-6 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Input
+              type="text"
+              placeholder="Поиск услуг..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 text-base" // Пример стилей, верните ваши если нужно
+            />
           </div>
 
-          <div className="md:col-span-3">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="mb-6 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Поиск услуг..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="py-4 px-4 text-left font-semibold text-gray-600">Наименование услуги</th>
-                      <th className="py-4 px-4 text-right font-semibold text-gray-600">Цена (сум)</th>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="py-3 px-4 text-left font-semibold text-gray-600">Наименование услуги</th>
+                  <th className="py-3 px-4 text-right font-semibold text-gray-600">Цена (сум)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredServices.length > 0 ? (
+                  filteredServices.map((service) => (
+                    <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4">{service.name}</td>
+                      <td className="py-3 px-4 text-right font-medium">{service.price.toLocaleString('uz-UZ')} сум</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredServices.length > 0 ? (
-                      filteredServices.map((service) => (
-                        <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4">{service.name}</td>
-                          <td className="py-4 px-4 text-right font-medium">{service.price.toLocaleString()} сум</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={2} className="py-8 text-center text-gray-500">
-                          Услуги не найдены. Пожалуйста, измените параметры поиска.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-            </div>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="py-8 text-center text-gray-500">
+                      {searchQuery ? "Услуги по вашему запросу не найдены." : "Список услуг пуст."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

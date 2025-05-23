@@ -14,7 +14,7 @@ const Header = () => {
     { name: "Прайс-лист", path: "/prices" },
     { name: "Наши врачи", path: "/doctors" },
     { name: "Новости", path: "/news" },
-    { name: "Запись на приём", path: "/appointment" },
+    // { name: "Запись на приём", path: "/appointment" },
   ];
 
   useEffect(() => {
@@ -79,7 +79,7 @@ const Header = () => {
 
           <div className="hidden lg:block">
             <Button asChild className="bg-brand-red hover:bg-red-700 text-white">
-              <Link to="/appointment">Записаться на приём</Link>
+              {/* <Link to="/appointment">Записаться на приём</Link> */}
             </Button>
           </div>
 
@@ -112,7 +112,7 @@ const Header = () => {
               </Link>
             ))}
             <Button asChild className="bg-brand-red hover:bg-red-700 text-white mt-4 w-full">
-              <Link to="/appointment">Записаться на приём</Link>
+              {/* <Link to="/appointment">Записаться на приём</Link> */}
             </Button>
           </nav>
         </div>
