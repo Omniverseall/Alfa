@@ -3,7 +3,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-// Используем Tabs для основной навигации и для под-вкладок
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Search, Plus, Edit, Trash, Image as ImageIcon } from "lucide-react";
@@ -11,7 +10,6 @@ import { adminService, Doctor, NewsItem, GeneralService, DoctorConsultationSlot 
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
 
-// Обертки для Input и Textarea с Label (оставляем их, если они вам нужны)
 const LabelInput = ({ label, id, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) => (
   <div>
     <label htmlFor={id || props.name} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -27,13 +25,11 @@ const LabelTextarea = ({ label, id, ...props }: React.TextareaHTMLAttributes<HTM
 
 const AdminPage = () => {
   const { toast } = useToast();
-  const [searchQueryServices, setSearchQueryServices] = useState(""); // Отдельный поиск для вкладки услуг
-  const [searchQueryDoctors, setSearchQueryDoctors] = useState(""); // Поиск для врачей
-  const [searchQueryNews, setSearchQueryNews] = useState("");     // Поиск для новостей
+  const [searchQueryServices, setSearchQueryServices] = useState("");
+  const [searchQueryDoctors, setSearchQueryDoctors] = useState("");
+  const [searchQueryNews, setSearchQueryNews] = useState("");
   const [activeMainTab, setActiveMainTab] = useState("doctors");
-  // Состояние для активной под-вкладки на странице "Услуги и Цены"
   const [activeServiceSubTab, setActiveServiceSubTab] = useState("doctorConsultations");
-
 
   const [showDoctorProfileForm, setShowDoctorProfileForm] = useState(false);
   const [showNewsForm, setShowNewsForm] = useState(false);
@@ -72,7 +68,7 @@ const AdminPage = () => {
     return () => unsubs.forEach(unsub => unsub());
   }, []);
 
-  useEffect(() => { // Сброс специфичных поисков при смене основного таба
+  useEffect(() => {
     setSearchQueryServices("");
     setSearchQueryDoctors("");
     setSearchQueryNews("");
@@ -82,17 +78,26 @@ const AdminPage = () => {
     setLoadingDoctors(true); setLoadingNews(true); setLoadingGeneralServices(true); setLoadingDoctorSlots(true);
     try {
       await Promise.all([
-        adminService.getDoctors().then(setDoctors), adminService.getNews().then(setNews),
-        adminService.getGeneralServices().then(setGeneralServices), adminService.getDoctorConsultationSlots().then(setDoctorSlots),
+        adminService.getDoctors().then(setDoctors),
+        adminService.getNews().then(setNews),
+        adminService.getGeneralServices().then(setGeneralServices),
+        adminService.getDoctorConsultationSlots().then(setDoctorSlots),
       ]);
-    } catch (e) { console.error(e); toast({ title: "Ошибка загрузки данных", variant: "destructive" }); }
-    finally { setLoadingDoctors(false); setLoadingNews(false); setLoadingGeneralServices(false); setLoadingDoctorSlots(false); }
+    } catch (e) { 
+        console.error("Ошибка при загрузке всех данных в AdminPage:", e); 
+        toast({ title: "Ошибка загрузки данных", description: (e instanceof Error ? e.message : String(e)), variant: "destructive" }); 
+    }
+    finally { 
+        setLoadingDoctors(false); 
+        setLoadingNews(false); 
+        setLoadingGeneralServices(false); 
+        setLoadingDoctorSlots(false); 
+    }
   };
 
   const filteredDoctors = doctors.filter(d => !searchQueryDoctors || d.name.toLowerCase().includes(searchQueryDoctors.toLowerCase()) || d.specialization.toLowerCase().includes(searchQueryDoctors.toLowerCase()));
   const filteredNews = news.filter(n => !searchQueryNews || n.title.toLowerCase().includes(searchQueryNews.toLowerCase()) || (n.category?.toLowerCase().includes(searchQueryNews.toLowerCase())));
   
-  // Фильтрация для под-вкладок
   const filteredGeneralServices = generalServices.filter(s => !searchQueryServices || s.name.toLowerCase().includes(searchQueryServices.toLowerCase()));
   const filteredDoctorSlots = doctorSlots.filter(s => !searchQueryServices || s.specialization.toLowerCase().includes(searchQueryServices.toLowerCase()) || s.doctor_fio.toLowerCase().includes(searchQueryServices.toLowerCase()));
 
@@ -147,8 +152,8 @@ const AdminPage = () => {
     setEditingEntityType(type);
     if(type==='doctorProfile'){ setDoctorProfileForm(item); setShowDoctorProfileForm(true); }
     else if(type==='news'){ setNewsForm(item.date ? item : {...item, date: new Date().toISOString().split('T')[0]}); setShowNewsForm(true); }
-    else if(type==='generalService'){ setGeneralServiceForm(item); setShowGeneralServiceForm(true); } // Эта форма теперь будет под своей под-вкладкой
-    else if(type==='doctorSlot'){ setDoctorSlotForm(item); setShowDoctorSlotForm(true); } // Эта форма теперь будет под своей под-вкладкой
+    else if(type==='generalService'){ setGeneralServiceForm(item); setShowGeneralServiceForm(true); }
+    else if(type==='doctorSlot'){ setDoctorSlotForm(item); setShowDoctorSlotForm(true); } 
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -169,7 +174,6 @@ const AdminPage = () => {
             <TabsTrigger value="servicesAndSlots">Услуги и Цены</TabsTrigger>
           </TabsList>
 
-          {/* Doctors Tab (Профили врачей) */}
           <TabsContent value="doctors" className="mt-0">
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
               <div className="p-6">
@@ -182,13 +186,76 @@ const AdminPage = () => {
                     <Plus className="mr-2 h-4 w-4" /> Добавить профиль врача
                   </Button>
                 </div>
-                {showDoctorProfileForm && ( /* ... Форма для профиля врача (без изменений) ... */ <Card className="p-6 mb-6 border border-gray-200"><h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'doctorProfile' ? "Редактировать профиль врача" : "Добавить профиль врача"}</h3><form onSubmit={handleDoctorProfileSubmit} className="space-y-4"><LabelInput label="ФИО*" name="name" value={doctorProfileForm.name} onChange={e => handleInputChange(setDoctorProfileForm, e)} required /><LabelInput label="Специализация*" name="specialization" value={doctorProfileForm.specialization} onChange={e => handleInputChange(setDoctorProfileForm, e)} required /><LabelInput label="Опыт работы*" name="experience" value={doctorProfileForm.experience} onChange={e => handleInputChange(setDoctorProfileForm, e)} required /><LabelInput label="Образование" name="education" value={doctorProfileForm.education ?? ''} onChange={e => handleInputChange(setDoctorProfileForm, e)} /><LabelTextarea label="Описание" name="description" value={doctorProfileForm.description ?? ''} onChange={e => handleInputChange(setDoctorProfileForm, e)} /><div><label className="block text-sm font-medium text-gray-700 mb-1">Фото</label><div className="flex items-center gap-4">{doctorProfileForm.image && (<img src={doctorProfileForm.image} alt="Предпросмотр" className="h-20 w-20 rounded object-cover"/>)}<label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center"><ImageIcon className="h-4 w-4 mr-2" />{doctorProfileForm.image ? "Изменить" : "Загрузить"}<input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "doctorProfile")} /></label>{doctorProfileForm.image && (<Button size="sm" variant="ghost" onClick={() => setDoctorProfileForm(p => ({ ...p, image: null }))} className="text-red-500">Удалить</Button>)}</div></div><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'doctorProfile' ? "Сохранить" : "Добавить"}</Button></div></form></Card>)}
-                {loadingDoctors ? renderLoading : filteredDoctors.length === 0 ? renderEmpty("Профили врачей", searchQueryDoctors) : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{filteredDoctors.map(d => ( <Card key={d.id} className="overflow-hidden"><img src={d.image || PLACEHOLDER_IMAGE} alt={d.name} className="w-full h-56 object-cover"/><div className="p-4"><h3 className="font-semibold">{d.name}</h3><p className="text-sm text-gray-600">{d.specialization}</p><p className="text-xs text-gray-500 mt-1">{d.experience}</p><div className="mt-3 flex justify-end gap-2"><Button size="sm" variant="outline" onClick={() => openEditForm(d, 'doctorProfile')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={() => commonDeleteHandler(d.id, 'doctor', d.name)}><Trash className="h-4 w-4"/></Button></div></div></Card>))}</div>}
+                {showDoctorProfileForm && ( 
+                  <Card className="p-6 mb-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'doctorProfile' ? "Редактировать профиль врача" : "Добавить профиль врача"}</h3>
+                    <form onSubmit={handleDoctorProfileSubmit} className="space-y-4">
+                      <LabelTextarea label="ФИО*" name="name" value={doctorProfileForm.name} onChange={e => handleInputChange(setDoctorProfileForm, e)} required />
+                      <LabelTextarea label="Специализация*" name="specialization" value={doctorProfileForm.specialization} onChange={e => handleInputChange(setDoctorProfileForm, e)} required />
+                      <LabelTextarea label="Опыт работы" name="experience" value={doctorProfileForm.experience} onChange={e => handleInputChange(setDoctorProfileForm, e)} />
+                      <LabelTextarea label="Образование" name="education" value={doctorProfileForm.education ?? ''} onChange={e => handleInputChange(setDoctorProfileForm, e)} />
+                      <LabelTextarea label="Описание" name="description" value={doctorProfileForm.description ?? ''} onChange={e => handleInputChange(setDoctorProfileForm, e)} />
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Фото</label>
+                        <div className="flex items-center gap-4">
+                          {doctorProfileForm.image && (<img src={doctorProfileForm.image} alt="Предпросмотр" className="h-20 w-20 rounded object-cover"/>)}
+                          <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
+                            <ImageIcon className="h-4 w-4 mr-2" />{doctorProfileForm.image ? "Изменить" : "Загрузить"}
+                            <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "doctorProfile")} />
+                          </label>
+                          {doctorProfileForm.image && (<Button size="sm" variant="ghost" onClick={() => setDoctorProfileForm(p => ({ ...p, image: null }))} className="text-red-500">Удалить</Button>)}
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button>
+                        <Button type="submit">{editingId && editingEntityType === 'doctorProfile' ? "Сохранить" : "Добавить"}</Button>
+                      </div>
+                    </form>
+                  </Card>
+                )}
+                {loadingDoctors ? renderLoading : filteredDoctors.length === 0 ? renderEmpty("Профили врачей", searchQueryDoctors) : 
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredDoctors.map(d => ( 
+                      <Card key={d.id} className="overflow-hidden flex flex-col h-full">
+                        <div className="aspect-[3/4] w-full flex-shrink-0">
+                            <img src={d.image || PLACEHOLDER_IMAGE} alt={d.name} className="w-full h-full object-cover"/>
+                        </div>
+                        <div className="p-4 flex flex-col flex-grow">
+                          <div className="flex-grow">
+                            <h3 className="font-semibold whitespace-pre-wrap text-lg mb-1">{d.name}</h3>
+                            <p className="text-sm text-gray-600 whitespace-pre-wrap mb-1">{d.specialization}</p>
+                            {d.experience && (
+                                <div className="mb-2 mt-1">
+                                    <strong className="text-xs text-gray-700">Опыт работы:</strong>
+                                    <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">{d.experience}</p>
+                                </div>
+                            )}
+                            {d.education && (
+                                <div className="mb-2">
+                                    <strong className="text-xs text-gray-700">Образование:</strong>
+                                    <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">{d.education}</p>
+                                </div>
+                            )}
+                            {d.description && (
+                                <div>
+                                    <strong className="text-xs text-gray-700">Описание:</strong>
+                                    <p className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap">{d.description}</p>
+                                </div>
+                            )}
+                          </div>
+                          <div className="pt-3 flex justify-end gap-2 flex-shrink-0">
+                            <Button size="sm" variant="outline" onClick={() => openEditForm(d, 'doctorProfile')}><Edit className="h-4 w-4"/></Button>
+                            <Button size="sm" variant="destructive" onClick={() => commonDeleteHandler(d.id, 'doctor', d.name)}><Trash className="h-4 w-4"/></Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                }
               </div>
             </div>
           </TabsContent>
 
-          {/* News Tab */}
           <TabsContent value="news" className="mt-0">
             <div className="bg-white shadow-md rounded-lg overflow-hidden">
               <div className="p-6">
@@ -201,13 +268,70 @@ const AdminPage = () => {
                         <Plus className="mr-2 h-4 w-4" /> Добавить новость
                     </Button>
                 </div>
-                {showNewsForm && ( /* ... Форма для новостей (без изменений) ... */ <Card className="p-6 mb-6 border border-gray-200"><h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'news' ? "Редактировать новость" : "Добавить новость"}</h3><form onSubmit={handleNewsSubmit} className="space-y-4"><LabelInput label="Заголовок*" name="title" value={newsForm.title} onChange={e=>handleInputChange(setNewsForm,e)} required /><LabelInput label="Категория*" name="category" value={newsForm.category} onChange={e=>handleInputChange(setNewsForm,e)} required /><LabelInput label="Дата (ГГГГ-ММ-ДД)" name="date" type="date" value={newsForm.date} onChange={e=>handleInputChange(setNewsForm,e)} /><LabelTextarea label="Содержание*" name="content" value={newsForm.content} onChange={e=>handleInputChange(setNewsForm,e)} required /><div><label className="block text-sm font-medium">Изображение</label><div className="flex items-center gap-4 mt-1">{newsForm.image && (<img src={newsForm.image} alt="preview" className="h-20 w-20 rounded object-cover"/>)}<label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center"><ImageIcon className="h-4 w-4 mr-2" />{newsForm.image?"Изменить":"Загрузить"}<input type="file" className="hidden" accept="image/*" onChange={e=>handleImageUpload(e,'news')}/></label>{newsForm.image && <Button size="sm" variant="ghost" onClick={()=>setNewsForm(p=>({...p,image:null}))} className="text-red-500">Удалить</Button>}</div></div><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'news'?"Сохранить":"Добавить"}</Button></div></form></Card>)}
-                {loadingNews?renderLoading:filteredNews.length===0?renderEmpty("Новости", searchQueryNews):<div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b bg-gray-50"><th className="p-3 text-left font-semibold">Заголовок</th><th className="p-3 text-left font-semibold">Категория</th><th className="p-3 text-left font-semibold">Дата</th><th className="p-3 text-right font-semibold">Действия</th></tr></thead><tbody>{filteredNews.map(n=>(<tr key={n.id} className="border-b hover:bg-gray-50"><td className="p-3 flex items-center">{n.image && <img src={n.image} alt="" className="h-10 w-10 object-cover rounded mr-3"/>}{n.title}</td><td className="p-3">{n.category}</td><td className="p-3">{new Date(n.date).toLocaleDateString()}</td><td className="p-3 text-right"><Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(n,'news')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(n.id,'news',n.title)}><Trash className="h-4 w-4"/></Button></td></tr>))}</tbody></table></div>}
+                {showNewsForm && ( 
+                  <Card className="p-6 mb-6 border border-gray-200">
+                    <h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'news' ? "Редактировать новость" : "Добавить новость"}</h3>
+                    <form onSubmit={handleNewsSubmit} className="space-y-4">
+                      <LabelTextarea label="Заголовок*" name="title" value={newsForm.title} onChange={e=>handleInputChange(setNewsForm,e)} required />
+                      <LabelTextarea label="Категория*" name="category" value={newsForm.category} onChange={e=>handleInputChange(setNewsForm,e)} required />
+                      <LabelInput label="Дата (ГГГГ-ММ-ДД)" name="date" type="date" value={newsForm.date} onChange={e=>handleInputChange(setNewsForm,e)} />
+                      <LabelTextarea label="Содержание*" name="content" value={newsForm.content} onChange={e=>handleInputChange(setNewsForm,e)} required />
+                      <div>
+                        <label className="block text-sm font-medium">Изображение</label>
+                        <div className="flex items-center gap-4 mt-1">
+                          {newsForm.image && (<img src={newsForm.image} alt="preview" className="h-20 w-20 rounded object-cover"/>)}
+                          <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
+                            <ImageIcon className="h-4 w-4 mr-2" />{newsForm.image?"Изменить":"Загрузить"}
+                            <input type="file" className="hidden" accept="image/*" onChange={e=>handleImageUpload(e,'news')}/>
+                          </label>
+                          {newsForm.image && <Button size="sm" variant="ghost" onClick={()=>setNewsForm(p=>({...p,image:null}))} className="text-red-500">Удалить</Button>}
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button>
+                        <Button type="submit">{editingId && editingEntityType === 'news'?"Сохранить":"Добавить"}</Button>
+                      </div>
+                    </form>
+                  </Card>
+                )}
+                {loadingNews?renderLoading:filteredNews.length===0?renderEmpty("Новости", searchQueryNews):
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="p-3 text-left font-semibold">Заголовок</th>
+                          <th className="p-3 text-left font-semibold">Категория</th>
+                          <th className="p-3 text-left font-semibold">Дата</th>
+                          <th className="p-3 text-left font-semibold">Содержание</th>
+                          <th className="p-3 text-right font-semibold">Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredNews.map(n=>(
+                          <tr key={n.id} className="border-b hover:bg-gray-50">
+                            <td className="p-3">
+                                <div className="flex items-center">
+                                    {n.image && <img src={n.image} alt="" className="h-12 w-12 object-cover rounded mr-3 flex-shrink-0"/>}
+                                    <span className="whitespace-pre-wrap">{n.title}</span>
+                                </div>
+                            </td>
+                            <td className="p-3 whitespace-pre-wrap">{n.category}</td>
+                            <td className="p-3">{new Date(n.date).toLocaleDateString()}</td>
+                            <td className="p-3 whitespace-pre-wrap min-w-[200px] max-w-xs">{n.content}</td>
+                            <td className="p-3 text-right">
+                              <Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(n,'news')}><Edit className="h-4 w-4"/></Button>
+                              <Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(n.id,'news',n.title)}><Trash className="h-4 w-4"/></Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                }
               </div>
             </div>
         </TabsContent>
 
-        {/* Services and Doctor Slots Tab */}
         <TabsContent value="servicesAndSlots" className="mt-0">
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
             <div className="p-6">
@@ -216,7 +340,6 @@ const AdminPage = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input type="text" placeholder="Поиск по услугам/консультациям..." value={searchQueryServices} onChange={(e) => setSearchQueryServices(e.target.value)} className="pl-10"/>
                   </div>
-                  {/* Кнопки "Добавить" будут внутри под-вкладок */}
               </div>
 
               <Tabs value={activeServiceSubTab} onValueChange={setActiveServiceSubTab} className="w-full">
@@ -235,16 +358,46 @@ const AdminPage = () => {
                     <Card className="p-6 mb-6 border border-gray-200">
                       <h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'doctorSlot' ? "Редактировать консультацию" : "Добавить консультацию"}</h3>
                       <form onSubmit={handleDoctorSlotSubmit} className="space-y-4">
-                          <LabelInput label="Специализация врача (напр. Терапевт)*" name="specialization" value={doctorSlotForm.specialization} onChange={e=>handleInputChange(setDoctorSlotForm, e)} required />
-                          <LabelInput label="ФИО врача*" name="doctor_fio" value={doctorSlotForm.doctor_fio} onChange={e=>handleInputChange(setDoctorSlotForm, e)} required />
-                          <LabelInput label="Дни приёма" name="reception_days" value={doctorSlotForm.reception_days ?? ''} onChange={e=>handleInputChange(setDoctorSlotForm, e)} />
-                          <LabelInput label="Часы приёма" name="reception_hours" value={doctorSlotForm.reception_hours ?? ''} onChange={e=>handleInputChange(setDoctorSlotForm, e)} />
+                          <LabelTextarea label="Специализация врача (напр. Терапевт)*" name="specialization" value={doctorSlotForm.specialization} onChange={e=>handleInputChange(setDoctorSlotForm, e)} required />
+                          <LabelTextarea label="ФИО врача*" name="doctor_fio" value={doctorSlotForm.doctor_fio} onChange={e=>handleInputChange(setDoctorSlotForm, e)} required />
+                          <LabelTextarea label="Дни приёма" name="reception_days" value={doctorSlotForm.reception_days ?? ''} onChange={e=>handleInputChange(setDoctorSlotForm, e)} />
+                          <LabelTextarea label="Часы приёма" name="reception_hours" value={doctorSlotForm.reception_hours ?? ''} onChange={e=>handleInputChange(setDoctorSlotForm, e)} />
                           <LabelInput label="Цена*" type="number" name="price" value={doctorSlotForm.price.toString()} onChange={e=>handleInputChange(setDoctorSlotForm, e)} placeholder="0" required min="0"/>
                           <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'doctorSlot'?"Сохранить":"Добавить"}</Button></div>
                       </form>
                     </Card>
                   )}
-                  {loadingDoctorSlots ? renderLoading : filteredDoctorSlots.length === 0 ? renderEmpty("Консультации врачей", searchQueryServices) : <div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b bg-gray-50"><th className="p-3 text-left font-semibold">Врач (Специализация)</th><th className="p-3 text-left font-semibold">Ф.И.О.</th><th className="p-3 text-left font-semibold">Дни приёма</th><th className="p-3 text-left font-semibold">Часы приёма</th><th className="p-3 text-right font-semibold">Цена</th><th className="p-3 text-right font-semibold">Действия</th></tr></thead><tbody>{filteredDoctorSlots.map(s=>(<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3">{s.specialization}</td><td className="p-3">{s.doctor_fio}</td><td className="p-3">{s.reception_days}</td><td className="p-3">{s.reception_hours}</td><td className="p-3 text-right">{s.price.toLocaleString('uz-UZ')}</td><td className="p-3 text-right"><Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(s,'doctorSlot')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(s.id,'doctorSlot',`${s.specialization} - ${s.doctor_fio}`)}><Trash className="h-4 w-4"/></Button></td></tr>))}</tbody></table></div>}
+                  {loadingDoctorSlots ? renderLoading : filteredDoctorSlots.length === 0 ? renderEmpty("Консультации врачей", searchQueryServices) : 
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="p-3 text-left font-semibold">Врач (Специализация)</th>
+                            <th className="p-3 text-left font-semibold">Ф.И.О.</th>
+                            <th className="p-3 text-left font-semibold">Дни приёма</th>
+                            <th className="p-3 text-left font-semibold">Часы приёма</th>
+                            <th className="p-3 text-right font-semibold">Цена</th>
+                            <th className="p-3 text-right font-semibold">Действия</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredDoctorSlots.map(s=>(
+                            <tr key={s.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3 whitespace-pre-wrap">{s.specialization}</td>
+                              <td className="p-3 whitespace-pre-wrap">{s.doctor_fio}</td>
+                              <td className="p-3 whitespace-pre-wrap">{s.reception_days}</td>
+                              <td className="p-3 whitespace-pre-wrap">{s.reception_hours}</td>
+                              <td className="p-3 text-right">{s.price.toLocaleString('uz-UZ')}</td>
+                              <td className="p-3 text-right">
+                                <Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(s,'doctorSlot')}><Edit className="h-4 w-4"/></Button>
+                                <Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(s.id,'doctorSlot',`${s.specialization} - ${s.doctor_fio}`)}><Trash className="h-4 w-4"/></Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  }
                 </TabsContent>
 
                 <TabsContent value="generalDiagnostics">
@@ -257,13 +410,37 @@ const AdminPage = () => {
                     <Card className="p-6 mb-6 border border-gray-200">
                       <h3 className="text-lg font-semibold mb-4">{editingId && editingEntityType === 'generalService' ? "Редактировать услугу" : "Добавить общую услугу"}</h3>
                       <form onSubmit={handleGeneralServiceSubmit} className="space-y-4">
-                          <LabelInput label="Наименование услуги*" name="name" value={generalServiceForm.name} onChange={e=>handleInputChange(setGeneralServiceForm, e)} required />
+                          <LabelTextarea label="Наименование услуги*" name="name" value={generalServiceForm.name} onChange={e=>handleInputChange(setGeneralServiceForm, e)} required />
                           <LabelInput label="Цена*" type="number" name="price" value={generalServiceForm.price.toString()} onChange={e=>handleInputChange(setGeneralServiceForm, e)} placeholder="0" required min="0"/>
                           <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={resetAllForms}>Отмена</Button><Button type="submit">{editingId && editingEntityType === 'generalService'?"Сохранить":"Добавить"}</Button></div>
                       </form>
                     </Card>
                   )}
-                  {loadingGeneralServices?renderLoading:filteredGeneralServices.length===0?renderEmpty("Общие услуги", searchQueryServices):<div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b bg-gray-50"><th className="p-3 text-left font-semibold">Наименование услуги</th><th className="p-3 text-right font-semibold">Цена</th><th className="p-3 text-right font-semibold">Действия</th></tr></thead><tbody>{filteredGeneralServices.map(s=>(<tr key={s.id} className="border-b hover:bg-gray-50"><td className="p-3">{s.name}</td><td className="p-3 text-right">{s.price.toLocaleString('uz-UZ')}</td><td className="p-3 text-right"><Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(s,'generalService')}><Edit className="h-4 w-4"/></Button><Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(s.id,'generalService',s.name)}><Trash className="h-4 w-4"/></Button></td></tr>))}</tbody></table></div>}
+                  {loadingGeneralServices?renderLoading:filteredGeneralServices.length===0?renderEmpty("Общие услуги", searchQueryServices):
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="p-3 text-left font-semibold">Наименование услуги</th>
+                            <th className="p-3 text-right font-semibold">Цена</th>
+                            <th className="p-3 text-right font-semibold">Действия</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredGeneralServices.map(s=>(
+                            <tr key={s.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3 whitespace-pre-wrap">{s.name}</td>
+                              <td className="p-3 text-right">{s.price.toLocaleString('uz-UZ')}</td>
+                              <td className="p-3 text-right">
+                                <Button size="sm" variant="outline" className="mr-2" onClick={()=>openEditForm(s,'generalService')}><Edit className="h-4 w-4"/></Button>
+                                <Button size="sm" variant="destructive" onClick={()=>commonDeleteHandler(s.id,'generalService',s.name)}><Trash className="h-4 w-4"/></Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  }
                 </TabsContent>
               </Tabs>
             </div>

@@ -1,51 +1,65 @@
 import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-// Используем GeneralService и getGeneralServices/subscribeGeneralServices
-import { adminService, GeneralService } from "@/services/adminService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Импортируем Tabs
+// Импортируем оба типа услуг и соответствующие функции
+import { adminService, GeneralService, DoctorConsultationSlot } from "@/services/adminService";
 
 const PriceListPage = () => {
   const [generalServices, setGeneralServices] = useState<GeneralService[]>([]);
+  const [doctorSlots, setDoctorSlots] = useState<DoctorConsultationSlot[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loadingGeneral, setLoadingGeneral] = useState(true);
+  const [loadingSlots, setLoadingSlots] = useState(true);
+  const [activeTab, setActiveTab] = useState("doctorConsultations"); // По умолчанию показываем консультации
 
   useEffect(() => {
     let isMounted = true;
-    const fetchAndSetServices = async () => {
+
+    const fetchGeneral = async () => {
       if (!isMounted) return;
-      setLoading(true);
+      setLoadingGeneral(true);
       try {
-        // Используем getGeneralServices
-        const fetchedServices = await adminService.getGeneralServices();
-        if (isMounted) setGeneralServices(fetchedServices);
-      } catch (error) {
-        console.error("Ошибка загрузки общих услуг:", error);
-        if (isMounted) setGeneralServices([]);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+        const fetched = await adminService.getGeneralServices();
+        if (isMounted) setGeneralServices(fetched);
+      } catch (error) { console.error("Ошибка загрузки общих услуг:", error); if (isMounted) setGeneralServices([]); }
+      finally { if (isMounted) setLoadingGeneral(false); }
     };
 
-    fetchAndSetServices();
+    const fetchSlots = async () => {
+      if (!isMounted) return;
+      setLoadingSlots(true);
+      try {
+        const fetched = await adminService.getDoctorConsultationSlots();
+        if (isMounted) setDoctorSlots(fetched);
+      } catch (error) { console.error("Ошибка загрузки консультаций:", error); if (isMounted) setDoctorSlots([]); }
+      finally { if (isMounted) setLoadingSlots(false); }
+    };
 
-    // Используем subscribeGeneralServices
-    const unsubscribe = adminService.subscribeGeneralServices((updatedServices) => {
-        if (isMounted) setGeneralServices(updatedServices);
-    });
+    fetchGeneral();
+    fetchSlots();
+
+    const unsubGeneral = adminService.subscribeGeneralServices((updated) => { if (isMounted) setGeneralServices(updated); });
+    const unsubSlots = adminService.subscribeDoctorConsultationSlots((updated) => { if (isMounted) setDoctorSlots(updated); });
 
     return () => {
       isMounted = false;
-      if (unsubscribe) unsubscribe();
+      if (unsubGeneral) unsubGeneral();
+      if (unsubSlots) unsubSlots();
     };
   }, []);
 
-  const filteredServices = generalServices.filter((service) =>
+  // Фильтрация применяется в зависимости от активной вкладки
+  const filteredGeneralServices = generalServices.filter((service) =>
     service.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
-    return <div className="container mx-auto px-4 py-12 text-center">Загрузка прайс-листа...</div>;
-  }
+  const filteredDoctorSlots = doctorSlots.filter((slot) =>
+    slot.specialization.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    slot.doctor_fio.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const isLoading = loadingGeneral || loadingSlots; // Общий флаг загрузки
 
   return (
     <div className="py-12 md:py-16">
@@ -62,39 +76,93 @@ const PriceListPage = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
               type="text"
-              placeholder="Поиск услуг..."
+              placeholder="Поиск по названию или врачу..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 text-base" // Пример стилей, верните ваши если нужно
+              className="pl-10 pr-4 py-2 text-base"
             />
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="py-3 px-4 text-left font-semibold text-gray-600">Наименование услуги</th>
-                  <th className="py-3 px-4 text-right font-semibold text-gray-600">Цена (сум)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredServices.length > 0 ? (
-                  filteredServices.map((service) => (
-                    <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-4">{service.name}</td>
-                      <td className="py-3 px-4 text-right font-medium">{service.price.toLocaleString('uz-UZ')} сум</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={2} className="py-8 text-center text-gray-500">
-                      {searchQuery ? "Услуги по вашему запросу не найдены." : "Список услуг пуст."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="doctorConsultations">Консультации врачей</TabsTrigger>
+              <TabsTrigger value="generalDiagnostics">Диагностика и другие услуги</TabsTrigger>
+            </TabsList>
+
+            {/* Вкладка для консультаций врачей */}
+            <TabsContent value="doctorConsultations">
+              {isLoading ? (
+                <div className="text-center py-8">Загрузка консультаций...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="py-3 px-4 text-left font-semibold text-gray-600">Врач (Специализация)</th>
+                        <th className="py-3 px-4 text-left font-semibold text-gray-600">Ф.И.О.</th>
+                        <th className="py-3 px-4 text-left font-semibold text-gray-600">Дни приёма</th>
+                        <th className="py-3 px-4 text-left font-semibold text-gray-600">Часы приёма</th>
+                        <th className="py-3 px-4 text-right font-semibold text-gray-600">Цена (сум)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDoctorSlots.length > 0 ? (
+                        filteredDoctorSlots.map((slot) => (
+                          <tr key={slot.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="py-3 px-4">{slot.specialization}</td>
+                            <td className="py-3 px-4">{slot.doctor_fio}</td>
+                            <td className="py-3 px-4">{slot.reception_days || '-'}</td>
+                            <td className="py-3 px-4">{slot.reception_hours || '-'}</td>
+                            <td className="py-3 px-4 text-right font-medium">{slot.price.toLocaleString('uz-UZ')} сум</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-gray-500">
+                            {searchQuery ? "Консультации по вашему запросу не найдены." : "Список консультаций врачей пуст."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Вкладка для общих диагностических услуг */}
+            <TabsContent value="generalDiagnostics">
+              {isLoading ? (
+                <div className="text-center py-8">Загрузка услуг...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="py-3 px-4 text-left font-semibold text-gray-600">Наименование услуги</th>
+                        <th className="py-3 px-4 text-right font-semibold text-gray-600">Цена (сум)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredGeneralServices.length > 0 ? (
+                        filteredGeneralServices.map((service) => (
+                          <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="py-3 px-4">{service.name}</td>
+                            <td className="py-3 px-4 text-right font-medium">{service.price.toLocaleString('uz-UZ')} сум</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={2} className="py-8 text-center text-gray-500">
+                            {searchQuery ? "Услуги по вашему запросу не найдены." : "Список услуг пуст."}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

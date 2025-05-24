@@ -1,6 +1,5 @@
-
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster as Sonner } from "@/components/ui/sonner"; // Предполагаю, что это Sonner для уведомлений
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -17,11 +16,12 @@ import AdminPage from "./pages/AdminPage";
 import AdminLogin from "./components/AdminLogin";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
-import ExternalServices from "./components/ExternalServices";
+import ExternalServices from "./components/ExternalServices"; // Убедитесь, что путь правильный
 
-// Tawk.to configuration
-const TAWK_TO_PROPERTY_ID = "68065b7156ea99190dda8d75";
-const TAWK_TO_WIDGET_ID = "1ipcdadm5";
+// AmoCRM configuration (замените на ваши актуальные данные)
+const AMO_CRM_ID = "428983"; // Ваш ID виджета amoCRM
+const AMO_CRM_HASH = "69c11e8abd60654caa1e87852de38694587f1a1665806e8e51b1977d8f3df679"; // Ваш хэш виджета
+const AMO_CRM_LOCALE = "ru"; // Опционально, если отличается от "ru" или вы хотите явно указать
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,11 +36,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner /> {/* Если Sonner используется, оставляем */}
       <BrowserRouter>
-        <ExternalServices 
-          tawkToPropertyId={TAWK_TO_PROPERTY_ID}
-          tawkToWidgetId={TAWK_TO_WIDGET_ID}
+        <ExternalServices
+          amoCrmId={AMO_CRM_ID}
+          amoCrmHash={AMO_CRM_HASH}
+          amoCrmLocale={AMO_CRM_LOCALE} // Передаем локаль, если она определена
         />
         <Routes>
           <Route path="/" element={<Layout />}>

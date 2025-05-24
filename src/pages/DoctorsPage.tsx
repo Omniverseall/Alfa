@@ -1,50 +1,47 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { adminService } from "@/services/adminService";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Doctor {
-  id: string; // Изменено с number на string для согласованности с adminService
+  id: string;
   name: string;
   specialization: string;
-  image: string;
+  image: string | null;
   experience: string;
+  education?: string | null;
+  description?: string | null;
 }
 
 const DoctorsPage = () => {
-  const [doctors, setDoctors] = useState<Doctor[]>([]); // Initially empty array
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSpecialization, setSelectedSpecialization] = useState("Все специализации");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDoctors = async () => {
       setLoading(true);
       try {
-        // Try to use cached data first for immediate display
         const cachedDoctors = localStorage.getItem('cached_doctors');
         if (cachedDoctors) {
           setDoctors(JSON.parse(cachedDoctors));
-          setLoading(false);
         }
 
-        // Fetch fresh data
-        const fetchedDoctors = await adminService.getDoctors();
+        const fetchedDoctors: Doctor[] = await adminService.getDoctors();
         setDoctors(fetchedDoctors);
         localStorage.setItem('cached_doctors', JSON.stringify(fetchedDoctors));
-        setLoading(false);
       } catch (error) {
         console.error("Ошибка загрузки врачей:", error);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchDoctors();
 
-    const unsubscribe = adminService.subscribeDoctors((updatedDoctors) => {
+    const unsubscribe = adminService.subscribeDoctors((updatedDoctors: Doctor[]) => {
       setDoctors(updatedDoctors);
       localStorage.setItem('cached_doctors', JSON.stringify(updatedDoctors));
     });
@@ -56,20 +53,22 @@ const DoctorsPage = () => {
 
   const filteredDoctors = doctors.filter((doctor) => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSpecialization =
-      selectedSpecialization === "Все специализации" || doctor.specialization === selectedSpecialization;
-    return matchesSearch && matchesSpecialization;
+    return matchesSearch;
   });
 
   const renderDoctorSkeletons = () => (
     <>
       {Array(8).fill(0).map((_, index) => (
-        <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md">
-          <Skeleton className="h-64 w-full" />
-          <div className="p-6">
-            <Skeleton className="h-5 w-3/4 mb-2" />
-            <Skeleton className="h-4 w-1/2 mb-2" />
-            <Skeleton className="h-3 w-1/3 mb-4" />
+        <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full">
+          <Skeleton className="w-full aspect-[3/4]" />
+          <div className="p-6 flex flex-col flex-grow">
+            <div className="flex-grow">
+                <Skeleton className="h-5 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2 mb-2" />
+                <Skeleton className="h-3 w-1/3 mb-1" />
+                <Skeleton className="h-3 w-1/2 mb-3" />
+            </div>
+            <Skeleton className="h-3 w-full mb-3 mt-2"/>
             <Skeleton className="h-10 w-full" />
           </div>
         </div>
@@ -89,13 +88,13 @@ const DoctorsPage = () => {
 
         <div className="mb-8 flex flex-col md:flex-row gap-4">
           <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
               type="text"
               placeholder="Поиск врача по имени..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-12 pr-4 py-3 text-base"
             />
           </div>
         </div>
@@ -109,35 +108,54 @@ const DoctorsPage = () => {
             {filteredDoctors.map((doctor) => (
               <div
                 key={doctor.id}
-                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300"
+                className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col h-full"
               >
-                <Link to={`/doctors/${doctor.id}`} className="block">
-                  <div className="h-64 overflow-hidden">
-                    <img
-                      src={doctor.image}
-                      alt={doctor.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-semibold text-lg mb-1">{doctor.name}</h3>
-                    <p className="text-brand-blue font-medium">{doctor.specialization}</p>
-                    <p className="text-gray-500 text-sm mt-1">{doctor.experience}</p>
-                  </div>
-                </Link>
-                <div className="mt-4">
-                  <Link to={`/doctors/${doctor.id}`} className="block bg-brand-red hover:bg-red-700 text-white text-center py-2 px-4 rounded">
-                    Подробнее
+                <div className="flex-grow flex flex-col">
+                  <Link to={`/doctors/${doctor.id}`} className="group">
+                    <div className="w-full aspect-[3/4] overflow-hidden">
+                      <img
+                        src={doctor.image || '/placeholder.svg'}
+                        alt={doctor.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="p-6 pb-3"> 
+                      <h3 className="font-semibold text-xl mb-1 text-gray-800 whitespace-pre-wrap">{doctor.name}</h3>
+                      <p className="text-brand-blue font-medium text-md whitespace-pre-wrap">{doctor.specialization}</p>
+                      
+                      <div className="mt-3">
+                          <p className="text-xs text-gray-500 font-semibold">Опыт работы:</p>
+                          <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{doctor.experience}</p>
+                      </div>
+
+                      {doctor.education && (
+                          <div className="mt-3">
+                              <p className="text-xs text-gray-500 font-semibold">Образование:</p>
+                              <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{doctor.education}</p>
+                          </div>
+                      )}
+                    </div>
                   </Link>
+                  <div className="px-6 pb-3 mt-auto">
+                    <p className="text-xs text-blue-600 italic">
+                        Дни приёма и другие подробности - по кнопке 'Подробнее'.
+                    </p>
+                  </div>
+                  <div className="p-6 pt-2"> 
+                    <Link to={`/doctors/${doctor.id}`} className="block bg-brand-red hover:bg-red-700 text-white text-center py-3 px-4 rounded-md text-sm font-medium w-full transition-colors duration-300">
+                      Подробнее
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">
-              Врачи не найдены. Пожалуйста, измените параметры поиска.
+          <div className="text-center py-16 bg-white rounded-lg shadow-md">
+            <p className="text-xl text-gray-500">
+              Врачи не найдены.
             </p>
+            <p className="text-gray-400 mt-2">Пожалуйста, измените параметры поиска или попробуйте позже.</p>
           </div>
         )}
       </div>

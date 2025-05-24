@@ -2,14 +2,27 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ArrowRight } from "lucide-react";
-// Импортируем GeneralService и другие нужные типы/функции
 import { adminService, Doctor, NewsItem, GeneralService, CacheType, isMemoryCacheValid } from "@/services/adminService";
 import EmptyState from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import YandexMap from "@/components/YandexMap";
-// import { toast } from "@/components/ui/use-toast"; // toast не используется здесь
 
-const DoctorSkeleton = () => ( <div className="bg-white rounded-lg overflow-hidden shadow-md"> <Skeleton className="h-64 w-full" /> <div className="p-6"> <Skeleton className="h-5 w-3/4 mb-2" /> <Skeleton className="h-4 w-1/2 mb-2" /> <Skeleton className="h-3 w-1/3 mb-4" /> <Skeleton className="h-4 w-1/4" /> </div> </div> );
+const DoctorSkeleton = () => ( 
+    <div className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full"> 
+        <Skeleton className="w-full aspect-[3/4]" /> 
+        <div className="p-6 flex flex-col flex-grow"> 
+            <div className="flex-grow"> 
+                <Skeleton className="h-5 w-3/4 mb-2" /> 
+                <Skeleton className="h-4 w-1/2 mb-2" /> 
+                <Skeleton className="h-3 w-1/3 mb-1" />
+                <Skeleton className="h-3 w-2/3 mb-1" />
+                <Skeleton className="h-3 w-1/2 mb-3" />
+            </div> 
+            <Skeleton className="h-3 w-full mb-3 mt-2"/>
+            <Skeleton className="h-10 w-full" /> 
+        </div> 
+    </div> 
+);
 const ServiceSkeleton = () => ( <div className="bg-white rounded-lg shadow-md p-6"> <Skeleton className="h-6 w-3/4 mb-2" /> <Skeleton className="h-4 w-1/2 mb-2" /> <Skeleton className="h-5 w-1/3" /> </div> );
 const NewsSkeleton = () => ( <div className="bg-white rounded-lg overflow-hidden shadow-md"> <Skeleton className="h-48 w-full" /> <div className="p-6"> <Skeleton className="h-4 w-24 mb-2" /> <Skeleton className="h-6 w-3/4 mb-2" /> <Skeleton className="h-4 w-32 mt-4" /> </div> </div> );
 const LocationCard = ({ title, address }: { title: string; address: string }) => ( <div className="bg-white p-4 rounded-lg shadow-md"> <h3 className="font-medium text-lg text-brand-blue">{title}</h3> <p className="text-gray-600">{address}</p> </div> );
@@ -17,20 +30,18 @@ const LocationCard = ({ title, address }: { title: string; address: string }) =>
 const HomePage = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [generalServices, setGeneralServices] = useState<GeneralService[]>([]); // Используем GeneralService
+  const [generalServices, setGeneralServices] = useState<GeneralService[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [errorLoading, setErrorLoading] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    console.log("HomePage: Mounting and setting up subscriptions.");
 
     const fetchDataAndHandleLoading = async () => {
       if (!isMounted) return;
-      // Устанавливаем флаги только если данные еще не загружены из кэша
       const doctorsCacheValid = isMemoryCacheValid('doctors');
       const newsCacheValid = isMemoryCacheValid('news');
-      const generalServicesCacheValid = isMemoryCacheValid('generalServices'); // Проверяем кэш общих услуг
+      const generalServicesCacheValid = isMemoryCacheValid('generalServices');
 
       if (!(doctorsCacheValid && newsCacheValid && generalServicesCacheValid)) {
         setIsLoadingInitial(true);
@@ -38,18 +49,16 @@ const HomePage = () => {
       setErrorLoading(null);
 
       try {
-        // Promise.allSettled для отслеживания всех запросов
         await Promise.allSettled([
           adminService.getDoctors(),
           adminService.getNews(),
-          adminService.getGeneralServices() // Используем getGeneralServices
+          adminService.getGeneralServices()
         ]);
-        // Состояние isLoadingInitial будет управляться подписками или ниже
       } catch (e) {
         if (isMounted) {
           console.error("HomePage: Initial fetch trigger failed", e);
           setErrorLoading("Не удалось загрузить данные. Попробуйте позже.");
-          setIsLoadingInitial(false); // Завершаем загрузку при ошибке
+          setIsLoadingInitial(false);
         }
       }
     };
@@ -61,23 +70,20 @@ const HomePage = () => {
     const checkAllDataReceived = () => {
         if (isMounted && doctorDataReceived && newsDataReceived && generalServiceDataReceived) {
             setIsLoadingInitial(false);
-            console.log("HomePage: All initial data received via subscriptions or cache.");
         }
     };
 
     const unsubscribeDoctors = adminService.subscribeDoctors((data) => { if(isMounted) { setDoctors(data); doctorDataReceived = true; checkAllDataReceived(); } });
     const unsubscribeNews = adminService.subscribeNews((data) => { if(isMounted) { setNews(data); newsDataReceived = true; checkAllDataReceived(); } });
-    // Используем subscribeGeneralServices
     const unsubscribeGeneralServices = adminService.subscribeGeneralServices((data) => { if(isMounted) { setGeneralServices(data); generalServiceDataReceived = true; checkAllDataReceived(); } });
 
     fetchDataAndHandleLoading();
 
     return () => {
-      console.log("HomePage: Unmounting.");
       isMounted = false;
       unsubscribeDoctors();
       unsubscribeNews();
-      unsubscribeGeneralServices(); // Отписываемся от общих услуг
+      unsubscribeGeneralServices();
     };
   }, []);
 
@@ -95,9 +101,6 @@ const HomePage = () => {
                Комплексная диагностика и лечение с использованием современного оборудования и опыта квалифицированных специалистов
              </p>
              <div className="flex flex-wrap gap-4">
-               {/* <Button asChild size="lg" className="bg-brand-red hover:bg-red-700 text-white">
-                 <Link to="/appointment">Записаться на приём</Link>
-               </Button> */}
                <Button asChild variant="outline" size="lg" className="bg-white/10 backdrop-blur-sm text-white border-white hover:bg-white/20">
                  <Link to="/prices">Прайс-лист</Link>
                </Button>
@@ -133,7 +136,41 @@ const HomePage = () => {
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">В нашей клинике работают высококвалифицированные специалисты с многолетним опытом.</p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {isLoadingInitial ? Array(4).fill(0).map((_,i)=><DoctorSkeleton key={`docskel-${i}`}/>) : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading} /></div> : doctors.length > 0 ? (
-              doctors.slice(0,4).map(d=>(<div key={d.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left"><Link to={`/doctors/${d.id}`} className="block"><div className="h-64 overflow-hidden bg-gray-200">{d.image ? <img src={d.image} alt={d.name} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет фото</div>}</div><div className="p-4 md:p-6"><h3 className="font-semibold text-lg">{d.name}</h3><p className="text-brand-blue text-sm">{d.specialization}</p><p className="text-gray-500 text-xs mt-1">{d.experience}</p><div className="inline-flex items-center mt-4 text-brand-blue hover:text-brand-red text-sm">Подробнее <ArrowRight className="ml-1.5 h-4 w-4"/></div></div></Link></div>))
+              doctors.slice(0,4).map(d=>(
+                <div key={d.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full">
+                    <div className="flex flex-col flex-grow group">
+                        <Link to={`/doctors/${d.id}`}>
+                            <div className="w-full aspect-[3/4] overflow-hidden bg-gray-200">
+                                {d.image ? <img src={d.image} alt={d.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет фото</div>}
+                            </div>
+                            <div className="p-4 md:p-6 flex-grow">
+                                <h3 className="font-semibold text-lg whitespace-pre-wrap">{d.name}</h3>
+                                <p className="text-brand-blue text-sm whitespace-pre-wrap">{d.specialization}</p>
+                                <div className="mt-2">
+                                    <p className="text-xs text-gray-500 font-semibold">Опыт работы:</p>
+                                    <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{d.experience}</p>
+                                </div>
+                                {d.education && (
+                                    <div className="mt-2">
+                                        <p className="text-xs text-gray-500 font-semibold">Образование:</p>
+                                        <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{d.education}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </Link>
+                        <div className="px-4 md:px-6 pb-3 mt-auto">
+                            <p className="text-xs text-blue-600 italic">
+                                Дни приёма и другие подробности - по кнопке 'Подробнее'.
+                            </p>
+                        </div>
+                        <div className="p-4 md:p-6 pt-2">
+                            <Link to={`/doctors/${d.id}`} className="block bg-brand-blue hover:bg-blue-700 text-white text-center py-3 px-4 rounded-md text-sm font-medium w-full transition-colors duration-300">
+                                Подробнее
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+              ))
             ) : <div className="col-span-full"><EmptyState message="Врачи не добавлены"/></div>}
           </div>
           {!isLoadingInitial && !errorLoading && doctors.length > 0 && (<div className="mt-12"><Button asChild size="lg" className="bg-brand-blue hover:bg-blue-700 text-white"><Link to="/doctors">Все врачи</Link></Button></div>)}
@@ -159,7 +196,7 @@ const HomePage = () => {
            <p className="text-gray-600 mb-12 max-w-2xl mx-auto">Следите за нашими новостями.</p>
            <div className="grid md:grid-cols-3 gap-6">
              {isLoadingInitial ? Array(3).fill(0).map((_,i)=><NewsSkeleton key={`newsskel-${i}`}/>) : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading}/></div> : news.length > 0 ? (
-               news.slice(0,3).map(n=>(<div key={n.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col"><div className="h-48 overflow-hidden bg-gray-200">{n.image ? <img src={n.image} alt={n.title} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет изображения</div>}</div><div className="p-4 md:p-6 flex flex-col flex-grow"><div className="text-xs text-gray-500 mb-1">{new Date(n.date).toLocaleDateString()}</div><h3 className="font-semibold text-lg mb-2 text-gray-800 line-clamp-2">{n.title}</h3><p className="text-gray-500 text-sm line-clamp-3 flex-grow italic">Полный текст доступен по ссылке...</p><div className="mt-auto pt-3"><Link to={`/news/${n.id}`} className="inline-flex items-center text-brand-blue hover:text-brand-red text-sm font-medium">Читать далее <ArrowRight className="ml-1.5 h-4 w-4"/></Link></div></div></div>))
+               news.slice(0,3).map(n=>(<div key={n.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full"><div className="h-48 overflow-hidden bg-gray-200">{n.image ? <img src={n.image} alt={n.title} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет изображения</div>}</div><div className="p-4 md:p-6 flex flex-col flex-grow"><div className="text-xs text-gray-500 mb-1">{new Date(n.date).toLocaleDateString()}</div><h3 className="font-semibold text-lg mb-2 text-gray-800 line-clamp-2">{n.title}</h3><p className="text-gray-500 text-sm line-clamp-3 flex-grow italic">Полный текст доступен по ссылке...</p><div className="mt-auto pt-3"><Link to={`/news/${n.id}`} className="inline-flex items-center text-brand-blue hover:text-brand-red text-sm font-medium">Читать далее <ArrowRight className="ml-1.5 h-4 w-4"/></Link></div></div></div>))
              ) : <div className="col-span-full"><EmptyState message="Новости не добавлены"/></div>}
            </div>
             {!isLoadingInitial && !errorLoading && news.length > 0 && (<div className="mt-12"><Button asChild size="lg" variant="outline" className="border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white"><Link to="/news">Все новости</Link></Button></div>)}
