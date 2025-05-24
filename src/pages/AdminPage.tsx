@@ -198,7 +198,7 @@ const AdminPage = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Фото</label>
                         <div className="flex items-center gap-4">
-                          {doctorProfileForm.image && (<img src={doctorProfileForm.image} alt="Предпросмотр" className="h-20 w-20 rounded object-cover"/>)}
+                          {doctorProfileForm.image && (<img src={doctorProfileForm.image} alt="Предпросмотр" className="h-20 w-20 rounded object-contain bg-gray-100 p-1"/>)}
                           <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
                             <ImageIcon className="h-4 w-4 mr-2" />{doctorProfileForm.image ? "Изменить" : "Загрузить"}
                             <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "doctorProfile")} />
@@ -217,11 +217,15 @@ const AdminPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredDoctors.map(d => ( 
                       <Card key={d.id} className="overflow-hidden flex flex-col h-full">
-                        <div className="aspect-[3/4] w-full flex-shrink-0">
-                            <img src={d.image || PLACEHOLDER_IMAGE} alt={d.name} className="w-full h-full object-cover"/>
+                        <div className="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            <img 
+                                src={d.image || PLACEHOLDER_IMAGE} 
+                                alt={d.name} 
+                                className="max-w-full max-h-full object-contain"
+                            />
                         </div>
                         <div className="p-4 flex flex-col flex-grow">
-                          <div className="flex-grow">
+                          <div className="flex-grow mb-3">
                             <h3 className="font-semibold whitespace-pre-wrap text-lg mb-1">{d.name}</h3>
                             <p className="text-sm text-gray-600 whitespace-pre-wrap mb-1">{d.specialization}</p>
                             {d.experience && (
@@ -243,7 +247,7 @@ const AdminPage = () => {
                                 </div>
                             )}
                           </div>
-                          <div className="pt-3 flex justify-end gap-2 flex-shrink-0">
+                          <div className="mt-auto pt-3 flex justify-end gap-2 flex-shrink-0">
                             <Button size="sm" variant="outline" onClick={() => openEditForm(d, 'doctorProfile')}><Edit className="h-4 w-4"/></Button>
                             <Button size="sm" variant="destructive" onClick={() => commonDeleteHandler(d.id, 'doctor', d.name)}><Trash className="h-4 w-4"/></Button>
                           </div>
@@ -279,7 +283,7 @@ const AdminPage = () => {
                       <div>
                         <label className="block text-sm font-medium">Изображение</label>
                         <div className="flex items-center gap-4 mt-1">
-                          {newsForm.image && (<img src={newsForm.image} alt="preview" className="h-20 w-20 rounded object-cover"/>)}
+                          {newsForm.image && (<img src={newsForm.image} alt="preview" className="h-20 w-20 rounded object-contain bg-gray-100 p-1"/>)}
                           <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
                             <ImageIcon className="h-4 w-4 mr-2" />{newsForm.image?"Изменить":"Загрузить"}
                             <input type="file" className="hidden" accept="image/*" onChange={e=>handleImageUpload(e,'news')}/>
@@ -311,7 +315,11 @@ const AdminPage = () => {
                           <tr key={n.id} className="border-b hover:bg-gray-50">
                             <td className="p-3">
                                 <div className="flex items-center">
-                                    {n.image && <img src={n.image} alt="" className="h-12 w-12 object-cover rounded mr-3 flex-shrink-0"/>}
+                                    {n.image && 
+                                        <div className="w-12 h-12 bg-gray-100 flex items-center justify-center rounded mr-3 flex-shrink-0 overflow-hidden">
+                                            <img src={n.image} alt="" className="max-w-full max-h-full object-contain"/>
+                                        </div>
+                                    }
                                     <span className="whitespace-pre-wrap">{n.title}</span>
                                 </div>
                             </td>

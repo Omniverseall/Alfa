@@ -140,8 +140,8 @@ const HomePage = () => {
                 <div key={d.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full">
                     <div className="flex flex-col flex-grow group">
                         <Link to={`/doctors/${d.id}`}>
-                            <div className="w-full aspect-[3/4] overflow-hidden bg-gray-200">
-                                {d.image ? <img src={d.image} alt={d.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет фото</div>}
+                            <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 flex items-center justify-center">
+                                {d.image ? <img src={d.image} alt={d.name} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет фото</div>}
                             </div>
                             <div className="p-4 md:p-6 flex-grow">
                                 <h3 className="font-semibold text-lg whitespace-pre-wrap">{d.name}</h3>
@@ -196,7 +196,23 @@ const HomePage = () => {
            <p className="text-gray-600 mb-12 max-w-2xl mx-auto">Следите за нашими новостями.</p>
            <div className="grid md:grid-cols-3 gap-6">
              {isLoadingInitial ? Array(3).fill(0).map((_,i)=><NewsSkeleton key={`newsskel-${i}`}/>) : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading}/></div> : news.length > 0 ? (
-               news.slice(0,3).map(n=>(<div key={n.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full"><div className="h-48 overflow-hidden bg-gray-200">{n.image ? <img src={n.image} alt={n.title} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет изображения</div>}</div><div className="p-4 md:p-6 flex flex-col flex-grow"><div className="text-xs text-gray-500 mb-1">{new Date(n.date).toLocaleDateString()}</div><h3 className="font-semibold text-lg mb-2 text-gray-800 line-clamp-2">{n.title}</h3><p className="text-gray-500 text-sm line-clamp-3 flex-grow italic">Полный текст доступен по ссылке...</p><div className="mt-auto pt-3"><Link to={`/news/${n.id}`} className="inline-flex items-center text-brand-blue hover:text-brand-red text-sm font-medium">Читать далее <ArrowRight className="ml-1.5 h-4 w-4"/></Link></div></div></div>))
+               news.slice(0,3).map(n=>(
+                <div key={n.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full">
+                    <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center">
+                        {n.image ? <img src={n.image} alt={n.title} className="max-w-full max-h-full object-contain"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет изображения</div>}
+                    </div>
+                    <div className="p-4 md:p-6 flex flex-col flex-grow">
+                        <div className="text-xs text-gray-500 mb-1">{new Date(n.date).toLocaleDateString()}</div>
+                        <h3 className="font-semibold text-lg mb-2 text-gray-800 line-clamp-2">{n.title}</h3>
+                        <p className="text-gray-500 text-sm line-clamp-3 flex-grow italic">Полный текст доступен по ссылке...</p>
+                        <div className="mt-auto pt-3">
+                            <Link to={`/news/${n.id}`} className="inline-flex items-center text-brand-blue hover:text-brand-red text-sm font-medium">
+                                Читать далее <ArrowRight className="ml-1.5 h-4 w-4"/>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+                ))
              ) : <div className="col-span-full"><EmptyState message="Новости не добавлены"/></div>}
            </div>
             {!isLoadingInitial && !errorLoading && news.length > 0 && (<div className="mt-12"><Button asChild size="lg" variant="outline" className="border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white"><Link to="/news">Все новости</Link></Button></div>)}

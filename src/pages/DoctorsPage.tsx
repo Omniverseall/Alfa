@@ -112,11 +112,11 @@ const DoctorsPage = () => {
               >
                 <div className="flex-grow flex flex-col">
                   <Link to={`/doctors/${doctor.id}`} className="group">
-                    <div className="w-full aspect-[3/4] overflow-hidden">
+                    <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 flex items-center justify-center">
                       <img
                         src={doctor.image || '/placeholder.svg'}
                         alt={doctor.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                     <div className="p-6 pb-3"> 

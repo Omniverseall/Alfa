@@ -103,11 +103,13 @@ const DoctorDetailPage = () => {
         <div className="grid md:grid-cols-3 gap-x-8 gap-y-6 items-start">
           <div className="md:col-span-1">
             <div className="rounded-lg overflow-hidden shadow-xl bg-white sticky top-24">
-              <img 
-                src={doctor.image || '/placeholder.svg'} 
-                alt={doctor.name} 
-                className="w-full h-auto object-cover aspect-[3/4]"
-              />
+              <div className="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center">
+                <img 
+                  src={doctor.image || '/placeholder.svg'} 
+                  alt={doctor.name} 
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
             </div>
           </div>
 
