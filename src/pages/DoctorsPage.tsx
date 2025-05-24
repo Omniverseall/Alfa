@@ -2,18 +2,10 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { adminService } from "@/services/adminService";
+import { adminService, Doctor } from "@/services/adminService";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface Doctor {
-  id: string;
-  name: string;
-  specialization: string;
-  image: string | null;
-  experience: string;
-  education?: string | null;
-  description?: string | null;
-}
+const PLACEHOLDER_IMAGE = "/placeholder.svg";
 
 const DoctorsPage = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -112,12 +104,27 @@ const DoctorsPage = () => {
               >
                 <div className="flex-grow flex flex-col">
                   <Link to={`/doctors/${doctor.id}`} className="group">
-                    <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 flex items-center justify-center">
-                      <img
-                        src={doctor.image || '/placeholder.svg'}
-                        alt={doctor.name}
-                        className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                      />
+                    <div className="w-full aspect-[3/4] overflow-hidden relative bg-gray-100">
+                        {doctor.image && doctor.image !== PLACEHOLDER_IMAGE && (
+                            <img 
+                                src={doctor.image} 
+                                alt=""
+                                aria-hidden="true"
+                                className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 transition-transform duration-300 group-hover:blur-md"
+                            />
+                        )}
+                        {doctor.image && doctor.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors duration-300"></div>}
+                        
+                        <img
+                            src={doctor.image || PLACEHOLDER_IMAGE}
+                            alt={doctor.name}
+                            className="relative z-10 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        />
+                         {(!doctor.image || doctor.image === PLACEHOLDER_IMAGE) && (
+                             <div className="absolute inset-0 flex items-center justify-center z-0">
+                                <img src={PLACEHOLDER_IMAGE} alt={doctor.name} className="w-1/2 h-1/2 object-contain opacity-30" />
+                             </div>
+                        )}
                     </div>
                     <div className="p-6 pb-3"> 
                       <h3 className="font-semibold text-xl mb-1 text-gray-800 whitespace-pre-wrap">{doctor.name}</h3>

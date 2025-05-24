@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminService, Doctor } from "@/services/adminService";
 
+const PLACEHOLDER_IMAGE = "/placeholder.svg";
+
 const DoctorDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -103,12 +105,27 @@ const DoctorDetailPage = () => {
         <div className="grid md:grid-cols-3 gap-x-8 gap-y-6 items-start">
           <div className="md:col-span-1">
             <div className="rounded-lg overflow-hidden shadow-xl bg-white sticky top-24">
-              <div className="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center">
+              <div className="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center relative overflow-hidden">
+                {doctor.image && doctor.image !== PLACEHOLDER_IMAGE && (
+                    <img 
+                        src={doctor.image} 
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 w-full h-full object-cover blur-lg scale-110"
+                    />
+                )}
+                {doctor.image && doctor.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10"></div>}
+                
                 <img 
-                  src={doctor.image || '/placeholder.svg'} 
+                  src={doctor.image || PLACEHOLDER_IMAGE} 
                   alt={doctor.name} 
-                  className="max-w-full max-h-full object-contain"
+                  className="relative z-10 max-w-full max-h-full object-contain"
                 />
+                {(!doctor.image || doctor.image === PLACEHOLDER_IMAGE) && (
+                     <div className="absolute inset-0 flex items-center justify-center z-0">
+                        <img src={PLACEHOLDER_IMAGE} alt={doctor.name} className="w-1/2 h-1/2 object-contain opacity-30" />
+                     </div>
+                )}
               </div>
             </div>
           </div>

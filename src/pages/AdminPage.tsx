@@ -198,7 +198,11 @@ const AdminPage = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Фото</label>
                         <div className="flex items-center gap-4">
-                          {doctorProfileForm.image && (<img src={doctorProfileForm.image} alt="Предпросмотр" className="h-20 w-20 rounded object-contain bg-gray-100 p-1"/>)}
+                          {doctorProfileForm.image && (
+                            <div className="h-20 w-20 rounded overflow-hidden bg-gray-100 flex items-center justify-center p-1">
+                                <img src={doctorProfileForm.image} alt="Предпросмотр" className="max-h-full max-w-full object-contain"/>
+                            </div>
+                          )}
                           <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
                             <ImageIcon className="h-4 w-4 mr-2" />{doctorProfileForm.image ? "Изменить" : "Загрузить"}
                             <input type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e, "doctorProfile")} />
@@ -217,12 +221,27 @@ const AdminPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredDoctors.map(d => ( 
                       <Card key={d.id} className="overflow-hidden flex flex-col h-full">
-                        <div className="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        <div className="w-full aspect-[3/4] flex-shrink-0 overflow-hidden relative bg-gray-100">
+                            {d.image && d.image !== PLACEHOLDER_IMAGE && (
+                                <img 
+                                    src={d.image} 
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="absolute inset-0 w-full h-full object-cover blur-lg scale-110"
+                                />
+                            )}
+                            {d.image && d.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10"></div>}
+                            
                             <img 
                                 src={d.image || PLACEHOLDER_IMAGE} 
                                 alt={d.name} 
-                                className="max-w-full max-h-full object-contain"
+                                className="relative z-10 w-full h-full object-contain"
                             />
+                            {(!d.image || d.image === PLACEHOLDER_IMAGE) && (
+                                 <div className="absolute inset-0 flex items-center justify-center z-0">
+                                    <img src={PLACEHOLDER_IMAGE} alt={d.name} className="w-1/2 h-1/2 object-contain opacity-30" />
+                                 </div>
+                            )}
                         </div>
                         <div className="p-4 flex flex-col flex-grow">
                           <div className="flex-grow mb-3">
@@ -283,7 +302,11 @@ const AdminPage = () => {
                       <div>
                         <label className="block text-sm font-medium">Изображение</label>
                         <div className="flex items-center gap-4 mt-1">
-                          {newsForm.image && (<img src={newsForm.image} alt="preview" className="h-20 w-20 rounded object-contain bg-gray-100 p-1"/>)}
+                          {newsForm.image && (
+                            <div className="h-20 w-20 rounded overflow-hidden bg-gray-100 flex items-center justify-center p-1">
+                                <img src={newsForm.image} alt="preview" className="max-h-full max-w-full object-contain"/>
+                            </div>
+                            )}
                           <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded flex items-center">
                             <ImageIcon className="h-4 w-4 mr-2" />{newsForm.image?"Изменить":"Загрузить"}
                             <input type="file" className="hidden" accept="image/*" onChange={e=>handleImageUpload(e,'news')}/>

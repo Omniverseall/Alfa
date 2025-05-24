@@ -7,6 +7,8 @@ import EmptyState from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import YandexMap from "@/components/YandexMap";
 
+const PLACEHOLDER_IMAGE = "/placeholder.svg";
+
 const DoctorSkeleton = () => ( 
     <div className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full"> 
         <Skeleton className="w-full aspect-[3/4]" /> 
@@ -140,16 +142,33 @@ const HomePage = () => {
                 <div key={d.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full">
                     <div className="flex flex-col flex-grow group">
                         <Link to={`/doctors/${d.id}`}>
-                            <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 flex items-center justify-center">
-                                {d.image ? <img src={d.image} alt={d.name} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет фото</div>}
+                            <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 relative flex items-center justify-center">
+                                {d.image && d.image !== PLACEHOLDER_IMAGE && (
+                                    <img 
+                                        src={d.image} 
+                                        alt=""
+                                        aria-hidden="true"
+                                        className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 transition-transform duration-300 group-hover:blur-md"
+                                    />
+                                )}
+                                {d.image && d.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors duration-300"></div>}
+                                
+                                <img src={d.image || PLACEHOLDER_IMAGE} alt={d.name} className="relative z-10 max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"/>
+                                {(!d.image || d.image === PLACEHOLDER_IMAGE) && (
+                                     <div className="absolute inset-0 flex items-center justify-center z-0">
+                                        <img src={PLACEHOLDER_IMAGE} alt={d.name} className="w-1/2 h-1/2 object-contain opacity-30" />
+                                     </div>
+                                )}
                             </div>
                             <div className="p-4 md:p-6 flex-grow">
                                 <h3 className="font-semibold text-lg whitespace-pre-wrap">{d.name}</h3>
                                 <p className="text-brand-blue text-sm whitespace-pre-wrap">{d.specialization}</p>
-                                <div className="mt-2">
-                                    <p className="text-xs text-gray-500 font-semibold">Опыт работы:</p>
-                                    <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{d.experience}</p>
-                                </div>
+                                {d.experience && 
+                                    <div className="mt-2">
+                                        <p className="text-xs text-gray-500 font-semibold">Опыт работы:</p>
+                                        <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{d.experience}</p>
+                                    </div>
+                                }
                                 {d.education && (
                                     <div className="mt-2">
                                         <p className="text-xs text-gray-500 font-semibold">Образование:</p>
@@ -198,8 +217,26 @@ const HomePage = () => {
              {isLoadingInitial ? Array(3).fill(0).map((_,i)=><NewsSkeleton key={`newsskel-${i}`}/>) : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading}/></div> : news.length > 0 ? (
                news.slice(0,3).map(n=>(
                 <div key={n.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full">
-                    <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center">
-                        {n.image ? <img src={n.image} alt={n.title} className="max-w-full max-h-full object-contain"/> : <div className="w-full h-full flex items-center justify-center text-gray-400">Нет изображения</div>}
+                    <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center relative">
+                        {n.image && (
+                            <img 
+                                src={n.image} 
+                                alt=""
+                                aria-hidden="true"
+                                className="absolute inset-0 w-full h-full object-cover blur-md scale-105"
+                            />
+                        )}
+                         {n.image && <div className="absolute inset-0 bg-black/10"></div>}
+                        <img 
+                            src={n.image || PLACEHOLDER_IMAGE} 
+                            alt={n.title} 
+                            className="relative z-10 max-w-full max-h-full object-contain"
+                        />
+                        {!n.image && (
+                             <div className="absolute inset-0 flex items-center justify-center z-0">
+                                <img src={PLACEHOLDER_IMAGE} alt={n.title} className="w-1/3 h-1/3 object-contain opacity-30" />
+                             </div>
+                        )}
                     </div>
                     <div className="p-4 md:p-6 flex flex-col flex-grow">
                         <div className="text-xs text-gray-500 mb-1">{new Date(n.date).toLocaleDateString()}</div>
