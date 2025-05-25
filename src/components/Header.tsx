@@ -52,12 +52,8 @@ const Header = () => {
             <img
               src="/lovable-uploads/8db8d2d1-17f6-4423-853f-8f7ae7e1b4c1.png"
               alt="Alfa Diagnostic Logo"
-              className="h-12 w-12 rounded bg-white object-contain"
+              className="h-[57px] w-[120px] rounded"
             />
-            <div>
-              <h1 className="font-bold text-xl text-brand-blue">Alfa Diagnostic</h1>
-              <p className="text-xs text-gray-600">Клиника в Ташкенте</p>
-            </div>
           </Link>
 
           <nav className="hidden lg:flex items-center space-x-6">

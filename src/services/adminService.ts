@@ -115,41 +115,41 @@ export const adminService = {
   updateDoctorConsultationSlot: async (id:string, s:Partial<Omit<DoctorConsultationSlot,'id'>>) => { try{const{data,error}=await supabase.from('doctor_consultation_slots').update(s).eq('id',id).select().single(); if(error)throw error; adminService.clearCache('doctorConsultationSlots'); return data as DoctorConsultationSlot;}catch(e){console.error(e);return null;}},
   deleteDoctorConsultationSlot: async (id:string) => { try{const{error}=await supabase.from('doctor_consultation_slots').delete().eq('id',id); if(error)throw error; adminService.clearCache('doctorConsultationSlots'); return true;}catch(e){console.error(e);return false;}},
 
-  subscribeDoctors: (cb: (d: Doctor[])=>void)=>{
+  subscribeDoctors: (cb: (d: Doctor[])=>void) => {
     subscribers.doctors.add(cb); 
     if(memoryCache.doctors.length>0 && isMemoryCacheValid('doctors')) {
       cb([...memoryCache.doctors]);
     } else {
       adminService.getDoctors().catch(e => console.error("Error in subscribeDoctors' initial fetch:", e));
     }
-    return ()=>subscribers.doctors.delete(cb);
+    return () => { subscribers.doctors.delete(cb); };
   },
-  subscribeNews: (cb: (n: NewsItem[])=>void)=>{
+  subscribeNews: (cb: (n: NewsItem[])=>void) => {
     subscribers.news.add(cb); 
     if(memoryCache.news.length>0 && isMemoryCacheValid('news')) {
       cb([...memoryCache.news]);
     } else {
       adminService.getNews().catch(e => console.error("Error in subscribeNews' initial fetch:", e));
     }
-    return ()=>subscribers.news.delete(cb);
+    return () => { subscribers.news.delete(cb); };
   },
-  subscribeGeneralServices: (cb: (s: GeneralService[])=>void)=>{
+  subscribeGeneralServices: (cb: (s: GeneralService[])=>void) => {
     subscribers.generalServices.add(cb); 
     if(memoryCache.generalServices.length>0 && isMemoryCacheValid('generalServices')) {
       cb([...memoryCache.generalServices]);
     } else {
       adminService.getGeneralServices().catch(e => console.error("Error in subscribeGeneralServices' initial fetch:", e));
     }
-    return ()=>subscribers.generalServices.delete(cb);
+    return () => { subscribers.generalServices.delete(cb); };
   },
-  subscribeDoctorConsultationSlots: (cb: (s: DoctorConsultationSlot[])=>void)=>{
+  subscribeDoctorConsultationSlots: (cb: (s: DoctorConsultationSlot[])=>void) => {
     subscribers.doctorConsultationSlots.add(cb); 
     if(memoryCache.doctorConsultationSlots.length>0 && isMemoryCacheValid('doctorConsultationSlots')) {
       cb([...memoryCache.doctorConsultationSlots]);
     } else {
       adminService.getDoctorConsultationSlots().catch(e => console.error("Error in subscribeDoctorConsultationSlots' initial fetch:", e));
     }
-    return ()=>subscribers.doctorConsultationSlots.delete(cb);
+    return () => { subscribers.doctorConsultationSlots.delete(cb); };
   },
 
   clearCache: (t?:CacheType)=>{

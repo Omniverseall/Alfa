@@ -84,3 +84,41 @@
 .card-shadow {
   @apply shadow-md hover:shadow-lg transition-shadow duration-300;
 }
+/* Глобальные стили для Swiper пагинации */
+.swiper-pagination-bullets.swiper-pagination-horizontal {
+  bottom: -4px !important; /* Опускаем точки ниже. !important может понадобиться для переопределения стилей Swiper */
+  /* Или можно использовать transform: translateY, если bottom не работает как ожидается */
+  /* transform: translateY(20px) !important; */
+}
+
+/* Можно добавить дополнительный отступ для всего контейнера Swiper, чтобы точки не вылезали */
+.mobile-swiper-doctors,
+.mobile-swiper-home-doctors,
+.mobile-swiper-home-news,
+.mobile-swiper-news {
+  padding-bottom: 30px !important; /* Добавляем отступ снизу для точек */
+}
+
+/* Стилизация самих точек (опционально, если хотите изменить их вид) */
+.swiper-pagination-bullet {
+  background-color: #007aff; /* Пример цвета (синий) */
+  opacity: 0.5;
+}
+
+.swiper-pagination-bullet-active {
+  background-color: #007aff; /* Пример цвета для активной точки */
+  opacity: 1;
+}
+
+/* Стилизация стрелок навигации (опционально) */
+.swiper-button-next,
+.swiper-button-prev {
+  color: #007aff !important; /* Пример цвета для стрелок */
+  top: 50% !important; /* Можно настроить позиционирование */
+  /* transform: translateY(-50%); */
+}
+.swiper-button-next::after,
+.swiper-button-prev::after {
+ font-size: 20px !important; /* Уменьшаем размер стандартных иконок стрелок */
+ font-weight: 900 !important;
+}

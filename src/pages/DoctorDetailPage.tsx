@@ -174,10 +174,6 @@ const DoctorDetailPage = () => {
                 </Card>
               </TabsContent>
             </Tabs>
-            
-            {/* <Button asChild className="mt-10 bg-brand-red hover:bg-red-700 text-lg py-3 px-6 w-full md:w-auto">
-              <Link to="/appointment">Записаться на приём</Link>
-            </Button> */}
           </div>
         </div>
       </div>

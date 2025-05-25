@@ -11,13 +11,9 @@ const Footer = () => {
             <Link to="/" className="flex items-center space-x-2 mb-4">
               <img
                 src="/lovable-uploads/8db8d2d1-17f6-4423-853f-8f7ae7e1b4c1.png"
-                alt="Логотип Alfa Diagnostic"
-                className="h-10 w-10 rounded bg-white object-contain"
+                alt="Alfa Diagnostic Logo"
+                className="h-[76px] w-[163px]"
               />
-              <div>
-                <h2 className="font-bold text-lg">Alfa Diagnostic</h2>
-                <p className="text-xs text-gray-300">Клиника в Ташкенте</p>
-              </div>
             </Link>
             <p className="text-gray-300 text-sm mb-4">
               Современная клиника с высококвалифицированными специалистами и передовым медицинским оборудованием.

@@ -54,9 +54,9 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
             className="mb-10"
           >
             <img 
-              src="/lovable-uploads/8db8d2d1-17f6-4423-853f-8f7ae7e1b4c1.png" 
+              src="/lovable-uploads/image.png" 
               alt="Alfa Diagnostic Logo" 
-              className="h-12 w-12 sm:h-16 sm:w-16 md:h-28 md:w-28 rounded bg-white object-contain drop-shadow-xl"
+              className="h-12 w-12 sm:h-16 sm:w-16 md:h-28 md:w-28 rounded bg-white object-cover drop-shadow-xl" // Changed object-contain to object-cover
             />
           </motion.div>
           

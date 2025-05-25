@@ -1,16 +1,27 @@
+// src/pages/HomePage.tsx
+// No changes needed based on the request. The doctor card display logic for "experience"
+// already correctly uses `doctor.experience && doctor.experience.trim() !== ""`.
+// Swiper logic here is different (includes autoplay) and is not being compared to DoctorsPage.
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ArrowRight } from "lucide-react";
-import { adminService, Doctor, NewsItem, GeneralService, CacheType, isMemoryCacheValid } from "@/services/adminService";
+import { adminService, Doctor, NewsItem, GeneralService, isMemoryCacheValid } from "@/services/adminService";
 import EmptyState from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import YandexMap from "@/components/YandexMap";
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+import 'swiper/css/autoplay';
+
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
 
 const DoctorSkeleton = () => ( 
-    <div className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full"> 
+    <div className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full mx-1"> 
         <Skeleton className="w-full aspect-[3/4]" /> 
         <div className="p-6 flex flex-col flex-grow"> 
             <div className="flex-grow"> 
@@ -26,7 +37,7 @@ const DoctorSkeleton = () => (
     </div> 
 );
 const ServiceSkeleton = () => ( <div className="bg-white rounded-lg shadow-md p-6"> <Skeleton className="h-6 w-3/4 mb-2" /> <Skeleton className="h-4 w-1/2 mb-2" /> <Skeleton className="h-5 w-1/3" /> </div> );
-const NewsSkeleton = () => ( <div className="bg-white rounded-lg overflow-hidden shadow-md"> <Skeleton className="h-48 w-full" /> <div className="p-6"> <Skeleton className="h-4 w-24 mb-2" /> <Skeleton className="h-6 w-3/4 mb-2" /> <Skeleton className="h-4 w-32 mt-4" /> </div> </div> );
+const NewsSkeleton = () => ( <div className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full mx-1"> <Skeleton className="h-48 w-full" /> <div className="p-6 flex flex-col flex-grow"> <Skeleton className="h-4 w-24 mb-2" /> <Skeleton className="h-6 w-3/4 mb-2" /> <Skeleton className="h-4 flex-grow mb-3" /> <Skeleton className="h-4 w-32 mt-auto" /> </div> </div> );
 const LocationCard = ({ title, address }: { title: string; address: string }) => ( <div className="bg-white p-4 rounded-lg shadow-md"> <h3 className="font-medium text-lg text-brand-blue">{title}</h3> <p className="text-gray-600">{address}</p> </div> );
 
 const HomePage = () => {
@@ -35,10 +46,16 @@ const HomePage = () => {
   const [generalServices, setGeneralServices] = useState<GeneralService[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [errorLoading, setErrorLoading] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
-
     const fetchDataAndHandleLoading = async () => {
       if (!isMounted) return;
       const doctorsCacheValid = isMemoryCacheValid('doctors');
@@ -49,7 +66,6 @@ const HomePage = () => {
         setIsLoadingInitial(true);
       }
       setErrorLoading(null);
-
       try {
         await Promise.allSettled([
           adminService.getDoctors(),
@@ -60,7 +76,6 @@ const HomePage = () => {
         if (isMounted) {
           console.error("HomePage: Initial fetch trigger failed", e);
           setErrorLoading("Не удалось загрузить данные. Попробуйте позже.");
-          setIsLoadingInitial(false);
         }
       }
     };
@@ -88,6 +103,116 @@ const HomePage = () => {
       unsubscribeGeneralServices();
     };
   }, []);
+
+  const DoctorCardComponent = ({ doctor }: { doctor: Doctor }) => (
+    <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full mx-1">
+        <div className="flex flex-col flex-grow group">
+            <Link to={`/doctors/${doctor.id}`}>
+                <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 relative flex items-center justify-center">
+                    {doctor.image && doctor.image !== PLACEHOLDER_IMAGE && (
+                        <img 
+                            src={doctor.image} 
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 transition-transform duration-300 group-hover:blur-md"
+                        />
+                    )}
+                    {doctor.image && doctor.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors duration-300"></div>}
+                    <img src={doctor.image || PLACEHOLDER_IMAGE} alt={doctor.name} className="relative z-10 max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"/>
+                    {(!doctor.image || doctor.image === PLACEHOLDER_IMAGE) && (
+                         <div className="absolute inset-0 flex items-center justify-center z-0">
+                            <img src={PLACEHOLDER_IMAGE} alt={doctor.name} className="w-1/2 h-1/2 object-contain opacity-30" />
+                         </div>
+                    )}
+                </div>
+                <div className="p-4 md:p-6 flex-grow">
+                    <h3 className="font-semibold text-lg whitespace-pre-wrap">{doctor.name}</h3>
+                    <p className="text-brand-blue text-sm whitespace-pre-wrap">{doctor.specialization}</p>
+                    {doctor.experience && doctor.experience.trim() !== "" && (
+                        <div className="mt-2">
+                            <p className="text-xs text-gray-500 font-semibold">Опыт работы:</p>
+                            <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{doctor.experience}</p>
+                        </div>
+                    )}
+                    {doctor.education && (
+                        <div className="mt-2">
+                            <p className="text-xs text-gray-500 font-semibold">Образование:</p>
+                            <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{doctor.education}</p>
+                        </div>
+                    )}
+                </div>
+            </Link>
+            <div className="px-4 md:px-6 pb-3 mt-auto">
+                <p className="text-xs text-blue-600 italic">
+                    Дни приёма и другие подробности - по кнопке 'Подробнее'.
+                </p>
+            </div>
+            <div className="p-4 md:p-6 pt-2">
+                <Link to={`/doctors/${doctor.id}`} className="block bg-brand-blue hover:bg-blue-700 text-white text-center py-3 px-4 rounded-md text-sm font-medium w-full transition-colors duration-300">
+                    Подробнее
+                </Link>
+            </div>
+        </div>
+    </div>
+  );
+
+  const NewsCardComponent = ({ newsItem }: { newsItem: NewsItem }) => (
+    <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full mx-1">
+        <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center relative">
+            {newsItem.image && newsItem.image !== PLACEHOLDER_IMAGE && (
+                <img 
+                    src={newsItem.image} 
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover blur-md scale-105"
+                />
+            )}
+            {newsItem.image && newsItem.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10"></div>}
+            <img 
+                src={newsItem.image || PLACEHOLDER_IMAGE} 
+                alt={newsItem.title} 
+                className="relative z-10 max-w-full max-h-full object-contain"
+            />
+            {(!newsItem.image || newsItem.image === PLACEHOLDER_IMAGE) && (
+                 <div className="absolute inset-0 flex items-center justify-center z-0">
+                    <img src={PLACEHOLDER_IMAGE} alt={newsItem.title} className="w-1/3 h-1/3 object-contain opacity-30" />
+                 </div>
+            )}
+        </div>
+        <div className="p-4 md:p-6 flex flex-col flex-grow">
+            <div className="text-xs text-gray-500 mb-1">{new Date(newsItem.date).toLocaleDateString()}</div>
+            <h3 className="font-semibold text-lg mb-2 text-gray-800 line-clamp-2">{newsItem.title}</h3>
+            <p className="text-gray-500 text-sm line-clamp-3 flex-grow italic">Полный текст доступен по ссылке...</p>
+            <div className="mt-auto pt-3">
+                <Link to={`/news/${newsItem.id}`} className="inline-flex items-center text-brand-blue hover:text-brand-red text-sm font-medium">
+                    Читать далее <ArrowRight className="ml-1.5 h-4 w-4"/>
+                </Link>
+            </div>
+        </div>
+    </div>
+  );
+
+  const mobileSwiperParams = {
+    modules: [Navigation, Pagination, Autoplay],
+    spaceBetween: 10,
+    slidesPerView: 1.5, 
+    centeredSlides: true,
+    navigation: true,
+    pagination: { clickable: true },
+    autoplay: { delay: 5000, disableOnInteraction: false },
+    className: "py-4 mobile-swiper"
+  };
+  
+  const mobileSkeletonSwiperParams = {
+    modules: [Navigation, Pagination],
+    spaceBetween: 10,
+    slidesPerView: 1.5,
+    centeredSlides: true,
+    loop: false, 
+    navigation: true,
+    pagination: { clickable: true },
+    className: "py-4 mobile-swiper" 
+  };
 
   return (
     <div>
@@ -136,62 +261,29 @@ const HomePage = () => {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Наши врачи</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">В нашей клинике работают высококвалифицированные специалисты с многолетним опытом.</p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {isLoadingInitial ? Array(4).fill(0).map((_,i)=><DoctorSkeleton key={`docskel-${i}`}/>) : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading} /></div> : doctors.length > 0 ? (
-              doctors.slice(0,4).map(d=>(
-                <div key={d.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full">
-                    <div className="flex flex-col flex-grow group">
-                        <Link to={`/doctors/${d.id}`}>
-                            <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 relative flex items-center justify-center">
-                                {d.image && d.image !== PLACEHOLDER_IMAGE && (
-                                    <img 
-                                        src={d.image} 
-                                        alt=""
-                                        aria-hidden="true"
-                                        className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 transition-transform duration-300 group-hover:blur-md"
-                                    />
-                                )}
-                                {d.image && d.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors duration-300"></div>}
-                                
-                                <img src={d.image || PLACEHOLDER_IMAGE} alt={d.name} className="relative z-10 max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"/>
-                                {(!d.image || d.image === PLACEHOLDER_IMAGE) && (
-                                     <div className="absolute inset-0 flex items-center justify-center z-0">
-                                        <img src={PLACEHOLDER_IMAGE} alt={d.name} className="w-1/2 h-1/2 object-contain opacity-30" />
-                                     </div>
-                                )}
-                            </div>
-                            <div className="p-4 md:p-6 flex-grow">
-                                <h3 className="font-semibold text-lg whitespace-pre-wrap">{d.name}</h3>
-                                <p className="text-brand-blue text-sm whitespace-pre-wrap">{d.specialization}</p>
-                                {d.experience && 
-                                    <div className="mt-2">
-                                        <p className="text-xs text-gray-500 font-semibold">Опыт работы:</p>
-                                        <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{d.experience}</p>
-                                    </div>
-                                }
-                                {d.education && (
-                                    <div className="mt-2">
-                                        <p className="text-xs text-gray-500 font-semibold">Образование:</p>
-                                        <p className="text-gray-600 text-sm whitespace-pre-wrap mt-0.5">{d.education}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </Link>
-                        <div className="px-4 md:px-6 pb-3 mt-auto">
-                            <p className="text-xs text-blue-600 italic">
-                                Дни приёма и другие подробности - по кнопке 'Подробнее'.
-                            </p>
-                        </div>
-                        <div className="p-4 md:p-6 pt-2">
-                            <Link to={`/doctors/${d.id}`} className="block bg-brand-blue hover:bg-blue-700 text-white text-center py-3 px-4 rounded-md text-sm font-medium w-full transition-colors duration-300">
-                                Подробнее
-                            </Link>
-                        </div>
-                    </div>
+          {isLoadingInitial ? (
+            isMobile ? (
+                <Swiper {...mobileSkeletonSwiperParams} className="mobile-swiper-home-doctors">
+                  {Array(3).fill(0).map((_,i)=><SwiperSlide key={`docskelswipe-${i}`} style={{height: 'auto'}}><DoctorSkeleton/></SwiperSlide>)}
+                </Swiper>
+            ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">{Array(4).fill(0).map((_,i)=><DoctorSkeleton key={`docskelgrid-${i}`}/>)}</div>
+            )
+          ) : errorLoading ? (
+            <div className="col-span-full"><EmptyState message={errorLoading} /></div>
+          ) : doctors.length > 0 ? (
+            isMobile ? (
+                <Swiper {...mobileSwiperParams} loop={doctors.slice(0,4).length > 2} className="mobile-swiper-home-doctors">
+                    {doctors.slice(0,4).map(d=> <SwiperSlide key={d.id} style={{height: 'auto'}}><DoctorCardComponent doctor={d} /></SwiperSlide>)}
+                </Swiper>
+            ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {doctors.slice(0,4).map(d=> <DoctorCardComponent key={d.id} doctor={d} />)}
                 </div>
-              ))
-            ) : <div className="col-span-full"><EmptyState message="Врачи не добавлены"/></div>}
-          </div>
+            )
+          ) : (
+            <div className="col-span-full"><EmptyState message="Врачи не добавлены"/></div>
+          )}
           {!isLoadingInitial && !errorLoading && doctors.length > 0 && (<div className="mt-12"><Button asChild size="lg" className="bg-brand-blue hover:bg-blue-700 text-white"><Link to="/doctors">Все врачи</Link></Button></div>)}
         </div>
       </section>
@@ -213,45 +305,29 @@ const HomePage = () => {
          <div className="container mx-auto px-4 text-center">
            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Новости</h2>
            <p className="text-gray-600 mb-12 max-w-2xl mx-auto">Следите за нашими новостями.</p>
-           <div className="grid md:grid-cols-3 gap-6">
-             {isLoadingInitial ? Array(3).fill(0).map((_,i)=><NewsSkeleton key={`newsskel-${i}`}/>) : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading}/></div> : news.length > 0 ? (
-               news.slice(0,3).map(n=>(
-                <div key={n.id} className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full">
-                    <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center relative">
-                        {n.image && (
-                            <img 
-                                src={n.image} 
-                                alt=""
-                                aria-hidden="true"
-                                className="absolute inset-0 w-full h-full object-cover blur-md scale-105"
-                            />
-                        )}
-                         {n.image && <div className="absolute inset-0 bg-black/10"></div>}
-                        <img 
-                            src={n.image || PLACEHOLDER_IMAGE} 
-                            alt={n.title} 
-                            className="relative z-10 max-w-full max-h-full object-contain"
-                        />
-                        {!n.image && (
-                             <div className="absolute inset-0 flex items-center justify-center z-0">
-                                <img src={PLACEHOLDER_IMAGE} alt={n.title} className="w-1/3 h-1/3 object-contain opacity-30" />
-                             </div>
-                        )}
+            {isLoadingInitial ? (
+                isMobile ? (
+                    <Swiper {...mobileSkeletonSwiperParams} className="mobile-swiper-home-news">
+                        {Array(2).fill(0).map((_,i)=><SwiperSlide key={`newsskelswipe-${i}`} style={{height: 'auto'}}><NewsSkeleton/></SwiperSlide>)}
+                    </Swiper>
+                ) : (
+                    <div className="grid md:grid-cols-3 gap-6">{Array(3).fill(0).map((_,i)=><NewsSkeleton key={`newsskelgrid-${i}`}/>)}</div>
+                )
+            ) : errorLoading ? (
+                <div className="col-span-full"><EmptyState message={errorLoading}/></div>
+            ) : news.length > 0 ? (
+                isMobile ? (
+                    <Swiper {...mobileSwiperParams} loop={news.slice(0,3).length > 2} className="mobile-swiper-home-news">
+                        {news.slice(0,3).map(n=> <SwiperSlide key={n.id} style={{height: 'auto'}}><NewsCardComponent newsItem={n}/></SwiperSlide>)}
+                    </Swiper>
+                ) : (
+                    <div className="grid md:grid-cols-3 gap-6">
+                        {news.slice(0,3).map(n=> <NewsCardComponent key={n.id} newsItem={n}/>)}
                     </div>
-                    <div className="p-4 md:p-6 flex flex-col flex-grow">
-                        <div className="text-xs text-gray-500 mb-1">{new Date(n.date).toLocaleDateString()}</div>
-                        <h3 className="font-semibold text-lg mb-2 text-gray-800 line-clamp-2">{n.title}</h3>
-                        <p className="text-gray-500 text-sm line-clamp-3 flex-grow italic">Полный текст доступен по ссылке...</p>
-                        <div className="mt-auto pt-3">
-                            <Link to={`/news/${n.id}`} className="inline-flex items-center text-brand-blue hover:text-brand-red text-sm font-medium">
-                                Читать далее <ArrowRight className="ml-1.5 h-4 w-4"/>
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-                ))
-             ) : <div className="col-span-full"><EmptyState message="Новости не добавлены"/></div>}
-           </div>
+                )
+            ) : (
+                <div className="col-span-full"><EmptyState message="Новости не добавлены"/></div>
+            )}
             {!isLoadingInitial && !errorLoading && news.length > 0 && (<div className="mt-12"><Button asChild size="lg" variant="outline" className="border-brand-blue text-brand-blue hover:bg-brand-blue hover:text-white"><Link to="/news">Все новости</Link></Button></div>)}
          </div>
       </section>

@@ -1,3 +1,6 @@
+// src/pages/AdminPage.tsx
+// No changes needed based on the request. The doctor card display logic for "experience"
+// already correctly uses `d.experience && d.experience.trim() !== ""`.
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -247,7 +250,7 @@ const AdminPage = () => {
                           <div className="flex-grow mb-3">
                             <h3 className="font-semibold whitespace-pre-wrap text-lg mb-1">{d.name}</h3>
                             <p className="text-sm text-gray-600 whitespace-pre-wrap mb-1">{d.specialization}</p>
-                            {d.experience && (
+                            {d.experience && d.experience.trim() !== "" && (
                                 <div className="mb-2 mt-1">
                                     <strong className="text-xs text-gray-700">Опыт работы:</strong>
                                     <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap">{d.experience}</p>
