@@ -1,13 +1,8 @@
-// src/pages/NewsPage.tsx
-// No changes needed. The provided code already implements Swiper logic
-// (loop condition, slidesPerView, centeredSlides, modules) for mobile view
-// consistently with DoctorsPage.tsx.
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { adminService, NewsItem } from "@/services/adminService";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
@@ -15,6 +10,10 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
+
+const LoadingTextIndicator = ({ text }: { text: string }) => (
+  <div className="text-center py-10 text-gray-500 col-span-full">{text}</div>
+);
 
 const NewsPage = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -92,22 +91,6 @@ const NewsPage = () => {
         </div>
     </div>
   );
-
-  const renderNewsSkeletons = (count = 6) => (
-    Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full mx-1">
-            <Skeleton className="h-48 w-full" />
-            <div className="p-6 flex flex-col flex-grow">
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-full mb-1" />
-                <Skeleton className="h-4 w-full mb-1" />
-                <Skeleton className="h-4 w-2/3 mb-auto" />
-                <Skeleton className="h-4 w-32 mt-4" />
-            </div>
-        </div>
-    ))
-  );
   
   const mobileSwiperParams = {
     modules: [Navigation, Pagination],
@@ -119,17 +102,6 @@ const NewsPage = () => {
     className: "py-4 mobile-swiper-news"
   };
   
-  const mobileSkeletonSwiperParams = {
-    modules: [Navigation, Pagination],
-    spaceBetween: 10,
-    slidesPerView: 1.5,
-    centeredSlides: true,
-    loop: false, 
-    navigation: true,
-    pagination: { clickable: true },
-    className: "py-4 mobile-swiper-news"
-  };
-
   return (
     <div className="py-12 md:py-16 bg-gray-50">
       <div className="container mx-auto px-4">
@@ -160,15 +132,7 @@ const NewsPage = () => {
         )}
         
         {loading ? (
-            isMobile ? (
-                <Swiper {...mobileSkeletonSwiperParams} >
-                  {renderNewsSkeletons(3).map((skeleton, index) => <SwiperSlide key={`skel-news-${index}`} style={{height: 'auto'}}>{skeleton}</SwiperSlide>)}
-                </Swiper>
-            ) : (
-                <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {renderNewsSkeletons()}
-                </div>
-            )
+            <LoadingTextIndicator text="Загрузка новостей..." />
         ) : filteredNews.length > 0 ? (
             isMobile ? (
                 <Swiper {...mobileSwiperParams} loop={filteredNews.length > 2}>

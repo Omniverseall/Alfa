@@ -1,14 +1,9 @@
-// src/pages/HomePage.tsx
-// No changes needed based on the request. The doctor card display logic for "experience"
-// already correctly uses `doctor.experience && doctor.experience.trim() !== ""`.
-// Swiper logic here is different (includes autoplay) and is not being compared to DoctorsPage.
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { adminService, Doctor, NewsItem, GeneralService, isMemoryCacheValid } from "@/services/adminService";
 import EmptyState from "@/components/EmptyState";
-import { Skeleton } from "@/components/ui/skeleton";
 import YandexMap from "@/components/YandexMap";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
@@ -17,28 +12,13 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/autoplay';
 
-
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
 
-const DoctorSkeleton = () => ( 
-    <div className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full mx-1"> 
-        <Skeleton className="w-full aspect-[3/4]" /> 
-        <div className="p-6 flex flex-col flex-grow"> 
-            <div className="flex-grow"> 
-                <Skeleton className="h-5 w-3/4 mb-2" /> 
-                <Skeleton className="h-4 w-1/2 mb-2" /> 
-                <Skeleton className="h-3 w-1/3 mb-1" />
-                <Skeleton className="h-3 w-2/3 mb-1" />
-                <Skeleton className="h-3 w-1/2 mb-3" />
-            </div> 
-            <Skeleton className="h-3 w-full mb-3 mt-2"/>
-            <Skeleton className="h-10 w-full" /> 
-        </div> 
-    </div> 
-);
-const ServiceSkeleton = () => ( <div className="bg-white rounded-lg shadow-md p-6"> <Skeleton className="h-6 w-3/4 mb-2" /> <Skeleton className="h-4 w-1/2 mb-2" /> <Skeleton className="h-5 w-1/3" /> </div> );
-const NewsSkeleton = () => ( <div className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full mx-1"> <Skeleton className="h-48 w-full" /> <div className="p-6 flex flex-col flex-grow"> <Skeleton className="h-4 w-24 mb-2" /> <Skeleton className="h-6 w-3/4 mb-2" /> <Skeleton className="h-4 flex-grow mb-3" /> <Skeleton className="h-4 w-32 mt-auto" /> </div> </div> );
 const LocationCard = ({ title, address }: { title: string; address: string }) => ( <div className="bg-white p-4 rounded-lg shadow-md"> <h3 className="font-medium text-lg text-brand-blue">{title}</h3> <p className="text-gray-600">{address}</p> </div> );
+
+const LoadingTextIndicator = ({ text }: { text: string }) => (
+  <div className="text-center py-10 text-gray-500">{text}</div>
+);
 
 const HomePage = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -67,11 +47,9 @@ const HomePage = () => {
       }
       setErrorLoading(null);
       try {
-        await Promise.allSettled([
-          adminService.getDoctors(),
-          adminService.getNews(),
-          adminService.getGeneralServices()
-        ]);
+        await adminService.getDoctors();
+        await adminService.getNews();
+        await adminService.getGeneralServices();
       } catch (e) {
         if (isMounted) {
           console.error("HomePage: Initial fetch trigger failed", e);
@@ -90,11 +68,16 @@ const HomePage = () => {
         }
     };
 
+    if (isMemoryCacheValid('doctors')) doctorDataReceived = true;
+    if (isMemoryCacheValid('news')) newsDataReceived = true;
+    if (isMemoryCacheValid('generalServices')) generalServiceDataReceived = true;
+
     const unsubscribeDoctors = adminService.subscribeDoctors((data) => { if(isMounted) { setDoctors(data); doctorDataReceived = true; checkAllDataReceived(); } });
     const unsubscribeNews = adminService.subscribeNews((data) => { if(isMounted) { setNews(data); newsDataReceived = true; checkAllDataReceived(); } });
     const unsubscribeGeneralServices = adminService.subscribeGeneralServices((data) => { if(isMounted) { setGeneralServices(data); generalServiceDataReceived = true; checkAllDataReceived(); } });
 
     fetchDataAndHandleLoading();
+    checkAllDataReceived();
 
     return () => {
       isMounted = false;
@@ -110,8 +93,8 @@ const HomePage = () => {
             <Link to={`/doctors/${doctor.id}`}>
                 <div className="w-full aspect-[3/4] overflow-hidden bg-gray-100 relative flex items-center justify-center">
                     {doctor.image && doctor.image !== PLACEHOLDER_IMAGE && (
-                        <img 
-                            src={doctor.image} 
+                        <img
+                            src={doctor.image}
                             alt=""
                             aria-hidden="true"
                             className="absolute inset-0 w-full h-full object-cover blur-lg scale-110 transition-transform duration-300 group-hover:blur-md"
@@ -160,17 +143,17 @@ const HomePage = () => {
     <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all text-left flex flex-col h-full mx-1">
         <div className="h-48 overflow-hidden bg-gray-100 flex items-center justify-center relative">
             {newsItem.image && newsItem.image !== PLACEHOLDER_IMAGE && (
-                <img 
-                    src={newsItem.image} 
+                <img
+                    src={newsItem.image}
                     alt=""
                     aria-hidden="true"
                     className="absolute inset-0 w-full h-full object-cover blur-md scale-105"
                 />
             )}
             {newsItem.image && newsItem.image !== PLACEHOLDER_IMAGE && <div className="absolute inset-0 bg-black/10"></div>}
-            <img 
-                src={newsItem.image || PLACEHOLDER_IMAGE} 
-                alt={newsItem.title} 
+            <img
+                src={newsItem.image || PLACEHOLDER_IMAGE}
+                alt={newsItem.title}
                 className="relative z-10 max-w-full max-h-full object-contain"
             />
             {(!newsItem.image || newsItem.image === PLACEHOLDER_IMAGE) && (
@@ -195,23 +178,12 @@ const HomePage = () => {
   const mobileSwiperParams = {
     modules: [Navigation, Pagination, Autoplay],
     spaceBetween: 10,
-    slidesPerView: 1.5, 
+    slidesPerView: 1.5,
     centeredSlides: true,
     navigation: true,
     pagination: { clickable: true },
     autoplay: { delay: 5000, disableOnInteraction: false },
     className: "py-4 mobile-swiper"
-  };
-  
-  const mobileSkeletonSwiperParams = {
-    modules: [Navigation, Pagination],
-    spaceBetween: 10,
-    slidesPerView: 1.5,
-    centeredSlides: true,
-    loop: false, 
-    navigation: true,
-    pagination: { clickable: true },
-    className: "py-4 mobile-swiper" 
   };
 
   return (
@@ -262,18 +234,12 @@ const HomePage = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Наши врачи</h2>
           <p className="text-gray-600 mb-12 max-w-2xl mx-auto">В нашей клинике работают высококвалифицированные специалисты с многолетним опытом.</p>
           {isLoadingInitial ? (
-            isMobile ? (
-                <Swiper {...mobileSkeletonSwiperParams} className="mobile-swiper-home-doctors">
-                  {Array(3).fill(0).map((_,i)=><SwiperSlide key={`docskelswipe-${i}`} style={{height: 'auto'}}><DoctorSkeleton/></SwiperSlide>)}
-                </Swiper>
-            ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">{Array(4).fill(0).map((_,i)=><DoctorSkeleton key={`docskelgrid-${i}`}/>)}</div>
-            )
+            <LoadingTextIndicator text="Загрузка врачей..." />
           ) : errorLoading ? (
             <div className="col-span-full"><EmptyState message={errorLoading} /></div>
           ) : doctors.length > 0 ? (
             isMobile ? (
-                <Swiper {...mobileSwiperParams} loop={doctors.slice(0,4).length > 2} className="mobile-swiper-home-doctors">
+                <Swiper {...mobileSwiperParams} loop={doctors.slice(0,4).length > 2} >
                     {doctors.slice(0,4).map(d=> <SwiperSlide key={d.id} style={{height: 'auto'}}><DoctorCardComponent doctor={d} /></SwiperSlide>)}
                 </Swiper>
             ) : (
@@ -293,7 +259,7 @@ const HomePage = () => {
            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Наши услуги</h2>
            <p className="text-gray-600 mb-12 max-w-2xl mx-auto">Мы предлагаем широкий спектр медицинских услуг.</p>
            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-             {isLoadingInitial ? Array(6).fill(0).map((_,i)=><ServiceSkeleton key={`servskel-${i}`}/>) : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading}/></div> : generalServices.length > 0 ? (
+             {isLoadingInitial ? <div className="col-span-full"><LoadingTextIndicator text="Загрузка услуг..." /></div> : errorLoading ? <div className="col-span-full"><EmptyState message={errorLoading}/></div> : generalServices.length > 0 ? (
                generalServices.slice(0,6).map(s=>(<div key={s.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all text-left"><h3 className="text-xl font-semibold mb-2 text-gray-800">{s.name}</h3><p className="font-medium mt-2 text-brand-red">{s.price.toLocaleString('uz-UZ')} сум</p></div>))
              ) : <div className="col-span-full"><EmptyState message="Услуги не добавлены"/></div>}
            </div>
@@ -306,18 +272,12 @@ const HomePage = () => {
            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Новости</h2>
            <p className="text-gray-600 mb-12 max-w-2xl mx-auto">Следите за нашими новостями.</p>
             {isLoadingInitial ? (
-                isMobile ? (
-                    <Swiper {...mobileSkeletonSwiperParams} className="mobile-swiper-home-news">
-                        {Array(2).fill(0).map((_,i)=><SwiperSlide key={`newsskelswipe-${i}`} style={{height: 'auto'}}><NewsSkeleton/></SwiperSlide>)}
-                    </Swiper>
-                ) : (
-                    <div className="grid md:grid-cols-3 gap-6">{Array(3).fill(0).map((_,i)=><NewsSkeleton key={`newsskelgrid-${i}`}/>)}</div>
-                )
+                <LoadingTextIndicator text="Загрузка новостей..." />
             ) : errorLoading ? (
                 <div className="col-span-full"><EmptyState message={errorLoading}/></div>
             ) : news.length > 0 ? (
                 isMobile ? (
-                    <Swiper {...mobileSwiperParams} loop={news.slice(0,3).length > 2} className="mobile-swiper-home-news">
+                    <Swiper {...mobileSwiperParams} loop={news.slice(0,3).length > 2}>
                         {news.slice(0,3).map(n=> <SwiperSlide key={n.id} style={{height: 'auto'}}><NewsCardComponent newsItem={n}/></SwiperSlide>)}
                     </Swiper>
                 ) : (

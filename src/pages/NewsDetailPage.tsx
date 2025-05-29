@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { adminService, NewsItem } from "@/services/adminService";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/use-toast";
+
+const PLACEHOLDER_IMAGE = "/placeholder.svg"; // Добавлено, если используется в img src
+
+const LoadingTextIndicator = ({ text }: { text: string }) => (
+  <div className="py-12 md:py-16 container mx-auto px-4 text-center text-gray-500">{text}</div>
+);
 
 const NewsDetailPage = () => {
   const { id } = useParams();
@@ -14,23 +19,22 @@ const NewsDetailPage = () => {
 
   useEffect(() => {
     const load = async () => {
+      if (!id) {
+        setLoading(false);
+        toast({ title: "Ошибка", description: "ID новости не указан.", variant: "destructive" });
+        return;
+      }
       setLoading(true);
       try {
-        // Load news directly, the service will check cache if needed
         const newsList = await adminService.getNews();
+        const found = newsList.find((n) => n.id === id);
         
-        const found = newsList.find((n) => n.id === id); // Убрано приведение к строке
-        
-        // Убираем логирование
-        // console.log("Загруженные новости:", newsList);
-
-        // Восстанавливаем исходную обработку loading
         if (found) {
           setNewsItem(found);
           setLoading(false);
         } else if (!found && retryCount < 2) {
           setRetryCount((prev) => prev + 1);
-          setTimeout(() => load(), 500); // Повторная попытка через 500 мс
+          setTimeout(() => load(), 500); 
         } else {
           setLoading(false);
           if (!found) {
@@ -54,40 +58,22 @@ const NewsDetailPage = () => {
     
     load();
     
-    // Set up subscription for real-time updates
     const unsubscribe = adminService.subscribeNews((updatedNews) => {
-      const found = updatedNews.find((n) => n.id === id); // Убрано Number(id)
-      if (found) {
-        setNewsItem(found);
-        setLoading(false);
+      if (id) {
+        const found = updatedNews.find((n) => n.id === id); 
+        if (found) {
+          setNewsItem(found);
+        }
       }
     });
     
     return () => {
       unsubscribe();
     };
-  }, [id]);
+  }, [id, retryCount]);
 
   if (loading) {
-    return (
-      <div className="py-12 md:py-16">
-        <div className="container mx-auto px-4">
-          <div className="mb-6">
-            <Skeleton className="h-10 w-40" />
-          </div>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-            <Skeleton className="h-[400px] w-full" />
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6 md:p-8">
-            <Skeleton className="h-8 w-3/4 mb-6" />
-            <Skeleton className="h-6 w-full mb-4" />
-            <Skeleton className="h-6 w-full mb-4" />
-            <Skeleton className="h-6 w-full mb-4" />
-            <Skeleton className="h-6 w-2/3 mb-4" />
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingTextIndicator text="Загрузка новости..." />;
   }
 
   if (!newsItem) {
@@ -117,7 +103,7 @@ const NewsDetailPage = () => {
         <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
           <div className="h-[300px] md:h-[400px] relative">
             <img
-              src={newsItem.image}
+              src={newsItem.image || PLACEHOLDER_IMAGE}
               alt={newsItem.title}
               className="w-full h-full object-cover"
             />

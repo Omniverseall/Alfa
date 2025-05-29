@@ -1,11 +1,8 @@
-// src/pages/DoctorsPage.tsx
-// Modified to conditionally render the "Опыт работы" section.
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { adminService, Doctor } from "@/services/adminService";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
@@ -13,6 +10,10 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
+
+const LoadingTextIndicator = ({ text }: { text: string }) => (
+  <div className="text-center py-10 text-gray-500 col-span-full">{text}</div>
+);
 
 const DoctorsPage = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -57,24 +58,6 @@ const DoctorsPage = () => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
-
-  const renderDoctorSkeletons = (count = 8) => (
-    Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="bg-white rounded-lg overflow-hidden shadow-md flex flex-col h-full mx-1">
-          <Skeleton className="w-full aspect-[3/4]" />
-          <div className="p-6 flex flex-col flex-grow">
-            <div className="flex-grow">
-                <Skeleton className="h-5 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2 mb-2" />
-                <Skeleton className="h-3 w-1/3 mb-1" />
-                <Skeleton className="h-3 w-1/2 mb-3" />
-            </div>
-            <Skeleton className="h-3 w-full mb-3 mt-2"/>
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-      ))
-  );
 
   const DoctorCard = ({ doctor }: { doctor: Doctor }) => (
     <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col h-full mx-1">
@@ -142,17 +125,6 @@ const DoctorsPage = () => {
     className: "py-4 mobile-swiper-doctors"
   };
 
-  const mobileSkeletonSwiperParams = {
-    modules: [Navigation, Pagination],
-    spaceBetween: 10,
-    slidesPerView: 1.5,
-    centeredSlides: true,
-    loop: false,
-    navigation: true,
-    pagination: { clickable: true },
-    className: "py-4 mobile-swiper-doctors"
-  };
-
   return (
     <div className="py-12 md:py-16">
       <div className="container mx-auto px-4">
@@ -176,15 +148,7 @@ const DoctorsPage = () => {
         </div>
 
         {loading ? (
-          isMobile ? (
-            <Swiper {...mobileSkeletonSwiperParams} >
-              {renderDoctorSkeletons(3).map((skeleton, index) => <SwiperSlide key={`skel-doc-${index}`} style={{height: 'auto'}}>{skeleton}</SwiperSlide>)}
-            </Swiper>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {renderDoctorSkeletons()}
-            </div>
-          )
+          <LoadingTextIndicator text="Загрузка врачей..." />
         ) : filteredDoctors.length > 0 ? (
           isMobile ? (
             <Swiper {...mobileSwiperParams} loop={filteredDoctors.length > 2}>

@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminService, Doctor } from "@/services/adminService";
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
+
+const LoadingTextIndicator = ({ text }: { text: string }) => (
+  <div className="container mx-auto px-4 py-12 text-center text-gray-500">{text}</div>
+);
 
 const DoctorDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,7 +35,6 @@ const DoctorDetailPage = () => {
           foundDoctorInCache = doctors.find((d: Doctor) => d.id === id);
           if (foundDoctorInCache) {
             setDoctor(foundDoctorInCache);
-            setLoading(false);
           }
         }
 
@@ -41,7 +43,6 @@ const DoctorDetailPage = () => {
         
         if (foundDoctorFresh) {
           setDoctor(foundDoctorFresh);
-          localStorage.setItem('cached_doctors', JSON.stringify(freshDoctors));
         } else if (!foundDoctorInCache) {
           console.error("Doctor not found with ID:", id);
         }
@@ -53,28 +54,19 @@ const DoctorDetailPage = () => {
     };
 
     fetchDoctor();
+     const unsubscribe = adminService.subscribeDoctors((updatedDoctors) => {
+      if (id) {
+        const updatedDoctor = updatedDoctors.find(d => d.id === id);
+        if (updatedDoctor) {
+          setDoctor(updatedDoctor);
+        }
+      }
+    });
+    return () => unsubscribe();
   }, [id, navigate]);
 
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <Skeleton className="h-8 w-48 mb-8" />
-          <div className="grid md:grid-cols-3 gap-8 items-start">
-            <div className="md:col-span-1">
-              <Skeleton className="aspect-[3/4] w-full rounded-lg" />
-            </div>
-            <div className="md:col-span-2">
-              <Skeleton className="h-10 w-3/4 mb-3" />
-              <Skeleton className="h-7 w-1/2 mb-6" />
-              <Skeleton className="h-5 w-24 mb-3" />
-              <Skeleton className="h-32 w-full mb-6" />
-              <Skeleton className="h-12 w-48" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingTextIndicator text="Загрузка информации о враче..." />;
   }
 
   if (!doctor) {
