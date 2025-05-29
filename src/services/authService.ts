@@ -1,7 +1,7 @@
 // Default admin credentials
 const DEFAULT_ADMIN = {
-  phone: "+998500735768",
-  password: "12345678"
+  phone: "+998900166699",
+  password: "raximbaev1996"
 };
 
 export const authService = {
