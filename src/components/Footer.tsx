@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { Instagram, Phone, Mail, MapPin, Clock } from "lucide-react";
+import { Phone, Mail, MapPin, Clock } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -18,16 +18,6 @@ const Footer = () => {
             <p className="text-gray-300 text-sm mb-4">
               Современная клиника с высококвалифицированными специалистами и передовым медицинским оборудованием.
             </p>
-            <div className="flex space-x-4">
-              <a
-                href="https://www.instagram.com/karasualfadiagnostic?igsh=aWtremEzcXI4ejM2"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-300 hover:text-white transition-colors"
-              >
-                <Instagram size={20} />
-              </a>
-            </div>
           </div>
 
           <div>
